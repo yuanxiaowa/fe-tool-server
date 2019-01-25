@@ -1,0 +1,24 @@
+enum FileType {
+  folder
+  file
+}
+
+type File {
+  path: String!
+  name: String!
+  hidden: Boolean!
+  size: Float
+  type: FileType!
+  forbidden: Boolean
+  children: [File]
+}
+
+type Query {
+  files(path: String!): [File]! @auth
+}
+
+type Mutation {
+  saveFile(path: String!, contents: String!): String @auth
+  removeFile(path: String!): String @auth
+  mkdir(path: String!): String @auth
+}

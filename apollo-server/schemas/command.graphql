@@ -1,0 +1,27 @@
+type Command {
+  id: ID!
+  type: String!
+  text: String!
+  value: String!
+}
+
+input CommandInput {
+  type: String!
+  text: String!
+  value: String!
+  id: String
+}
+
+type Query {
+  commands: [Command]!
+  command(id: ID!): Command
+  commandTypes: [String]!
+  commandType(id: ID!): String
+}
+
+type Mutation {
+  editCommand(item: CommandInput!): ID @auth
+  delCommand(id: ID!): String @auth
+  editCommandType(item: String!): ID @auth
+  delCommandType(id: ID!): String @auth
+}

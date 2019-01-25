@@ -1,0 +1,22 @@
+directive @length(min:Int, max: Int) on FIELD_DEFINITION | INPUT_FIELD_DEFINITION
+type UserInfo {
+  id: ID
+  username: String!
+  role: Role
+}
+
+input UserInfoInput {
+  username: String! @length(min: 3, max: 20)
+  password: String! @length(min: 3, max: 20)
+}
+
+type Query {
+  users: [UserInfo]! @auth(requires: ADMIN)
+  userinfo: UserInfo
+}
+
+type Mutation {
+  login(item: UserInfoInput!): UserInfo
+  register(item: UserInfoInput!): UserInfo
+  logout: String
+}

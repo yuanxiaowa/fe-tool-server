@@ -1,0 +1,23 @@
+type Path {
+  id: ID!
+  name: String!
+  path: String!
+  type: String!
+}
+
+input PathInput {
+  id: ID
+  name: String!
+  path: String!
+  type: String!
+}
+
+type Query {
+  paths(type: String!): [Path]! @auth
+  path(id: ID!): Path @auth
+}
+
+type Mutation {
+  editPath(item: PathInput!): ID @auth
+  delPath(id: ID!): ID @auth
+}

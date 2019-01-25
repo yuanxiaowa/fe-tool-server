@@ -1,0 +1,19 @@
+type JsonItem {
+  id: ID!
+  path: String!
+  name: String
+}
+
+input JsonInput {
+  name: String!
+  content: String!
+}
+
+type Query {
+  jsons: [JsonItem]!
+}
+
+type Mutation {
+  addJson(item: JsonInput!): String
+  delJson(id: ID!): String
+}

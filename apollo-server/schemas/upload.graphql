@@ -1,0 +1,17 @@
+
+type UploadFile {
+  id: ID!
+  path: String!
+  filename: String!
+  mimetype: String!
+  encoding: String!
+}
+
+type Query {
+  uploads: [UploadFile]
+}
+
+type Mutation {
+  singleUpload (file: Upload!): UploadFile!
+  multipleUpload (files: [Upload!]!): [UploadFile!]!
+}

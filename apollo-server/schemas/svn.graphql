@@ -1,0 +1,72 @@
+type SvnCommit {
+  author: String!
+  date: String!
+  revision: Int!
+}
+
+type SvnItem {
+  path: String!
+  type: String!
+  hasConflict: Boolean
+  revision: Int
+  commit: SvnCommit
+}
+
+type LogPath {
+  kind: String
+  action: String
+  path: String
+}
+
+type LogItem {
+  revision: Int!
+  author: String!
+  date: String!
+  msg: String!
+  paths: [LogPath]
+}
+
+type LogTable {
+  page: Int!
+  total: Int!
+  items: [LogItem]
+}
+
+type InfoItemRepository {
+  root: String
+}
+
+type InfoItem {
+  url: String
+  repository: InfoItemRepository
+}
+
+type LsFile {
+  name: String
+  fullPath: String
+  type: String
+  commit: SvnCommit
+}
+
+type LsItem {
+  path: String
+  files: [LsFile]
+}
+
+type Query {
+  svnStatus(cwd: String!): [SvnItem]!
+  svnLog(path: String!, page: Int): LogTable
+  svnInfo(path: String!): InfoItem
+  svnMergeInfo(path: String!, url: String!): [Int]
+  svnLs(path: String!): [LsItem]
+  svnStructure(path: String!): [[LsFile]]
+}
+
+type Mutation {
+  svnUpdate(paths: [String]!, cwd: String): String
+  svnAdd(paths: [String]!, cwd: String): String
+  svnDel(paths: [String]!, cwd: String): String
+  svnResolve(paths: [String]!, cwd: String): String
+  svnCommit(paths: [String]!, cwd: String, msg: String!): String
+  svnMerge(path: String!, url: String!, revisions: [Int]!): String
+}

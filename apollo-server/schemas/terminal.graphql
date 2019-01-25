@@ -1,0 +1,25 @@
+input TerminalInput {
+  host: String!
+  username: String!
+  password: String!
+  port: Int!
+  id: ID
+}
+
+type TerminalItem {
+  id: ID
+  host: String
+  username: String
+  token: String
+  password: String
+}
+
+type Query {
+  terminals: [TerminalItem]! @auth
+  terminal(id: ID!): TerminalItem! @auth
+}
+
+type Mutation {
+  editTerminal(item: TerminalInput!): ID @auth
+  delTerminal(id: ID!): String @auth
+}

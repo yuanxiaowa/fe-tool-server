@@ -1,0 +1,38 @@
+input SpecialInput {
+  id: ID
+  name: String
+  template: String
+  schema: String
+  data: String
+  layout: String
+  url: String
+  scripts: String
+  styles: String
+}
+
+type SepcialItem {
+  id: ID!
+  name: String!
+}
+
+type SpecialDetail {
+  id: ID!
+  name: String!
+  template: String!
+  schema: String!
+  data: JSON
+  layout: String
+  url: String
+  scripts: String
+  styles: String
+}
+
+type Query {
+  specials: [SepcialItem]!
+  special(id: ID!): SpecialDetail
+}
+
+type Mutation {
+  editSpecial(item: SpecialInput!): ID
+  delSpecial(id: ID!): String
+}

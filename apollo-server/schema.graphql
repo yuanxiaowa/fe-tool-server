@@ -1,0 +1,24 @@
+scalar JSON
+scalar Upload
+
+directive @auth(
+  requires: Role = ADMIN,
+) on OBJECT | FIELD_DEFINITION
+
+enum Role {
+  ADMIN
+  REVIEWER
+  USER
+  GUEST
+}
+
+# import Query.*, Mutation.* from './schemas/user.graphql'
+# import Query.*, Mutation.* from './schemas/file.graphql'
+# import Query.*, Mutation.* from './schemas/command.graphql'
+# import Query.*, Mutation.* from './schemas/special.graphql'
+# import Query.*, Mutation.* from './schemas/terminal.graphql'
+# import Query.*, Mutation.* from './schemas/upload.graphql'
+# import Query.*, Mutation.* from './schemas/path.graphql'
+# import Query.*, Mutation.* from './schemas/svn.graphql'
+# import Query.*, Mutation.* from './schemas/json.graphql'
+# import Mutation.* from './schemas/skl.graphql'
