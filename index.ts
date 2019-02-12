@@ -63,6 +63,7 @@ app.use((ctx, next) => {
 app.use(koaBody())
 app.use(router.routes()).use(router.allowedMethods())
 app.use((ctx) => {
+  console.log(ctx.request.url)
   ctx.type = 'html'
   if (ctx.path.endsWith('.html')) {
     ctx.body = createReadStream(path.join(__dirname, 'public', ctx.path))
