@@ -1,0 +1,20 @@
+type MusicList {
+  items: [JSON]
+  pages: Int
+  page: Int
+}
+
+type MusicInfo {
+  title: String
+  lrc: String
+  cover: String
+  id: String
+  type: String
+  url: String
+  singer: String
+}
+
+type Query {
+  musicSearch(kw: String!, type: String!, page: Int):MusicList
+  music(url: String!, type: String!):MusicInfo
+}

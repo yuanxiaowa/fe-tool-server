@@ -16,18 +16,18 @@ enum VideoType {
 
 interface ListItem {
   title: string,
-  img: string,
+  cover: string,
   url: string,
   type: VideoType,
   desc: string,
   rate: number | undefined
 }
 
-interface IVideo {
+export interface IVideo {
   search(kw: string, page: number): Promise<{
     items: ListItem[],
     pages: number,
-    cur: number
+    page: number
   }>
   getVideoInfo(url: string): Promise<{
     title: string;
@@ -46,7 +46,7 @@ interface IVideo {
   }>
 }
 
-export class TencentVideo implements IVideo {
+export const video_tencent: IVideo = {
   async search(kw: string, page = 1) {
     var html: string = await req.get('https://v.qq.com/x/search/', {
       qs: {
@@ -59,7 +59,7 @@ export class TencentVideo implements IVideo {
     var items: ListItem[] = $items.map(function (index, ele) {
       var $ele = $(ele)
       var $figure = $ele.find('.result_figure')
-      var img = $figure.find('img').attr('src')
+      var cover = $figure.find('img').attr('src')
       var url = $figure.attr('href')
       var $title = $ele.find('.result_title a')
       var type = $title.find('.type').text()
@@ -72,7 +72,7 @@ export class TencentVideo implements IVideo {
       var rate = +$ele.find('.result_score').text()
       return {
         title,
-        img,
+        cover,
         url,
         type,
         desc,
@@ -83,9 +83,9 @@ export class TencentVideo implements IVideo {
     return {
       items,
       pages: +getMatch(/pages: (\d+)/, page_str),
-      cur: +getMatch(/cur: (\d+)/, page_str)
+      page: +getMatch(/cur: (\d+)/, page_str)
     }
-  }
+  },
 
   async getVideoInfo(url: string) {
     var html: string = await req.get(url)
@@ -209,7 +209,7 @@ function getMatch(reg: RegExp, str: string) {
 video.search('西部世界').then(console.log)
 video.getVideoInfo('https://v.qq.com/x/cover/1egcxh1l6d8jyt1/i0026tithen.html').then(console.log) */
 
-export class YoukuVideo implements IVideo {
+export const video_youku: IVideo = {
   async search(kw: string, page = 1) {
     var html: string = await req.get(`https://so.youku.com/search_video/q_${encodeURI(kw)}`, {
       qs: {
@@ -224,7 +224,7 @@ export class YoukuVideo implements IVideo {
     var $ = cheerio.load(html)
     var items: ListItem[] = $('.sk-mod:not(.sk-about-search)').map((i, ele) => {
       var $ele = $(ele)
-      var img = $ele.find('img').attr('src')
+      var cover = $ele.find('img').attr('src')
       var $main = $ele.find('.mod-main')
       var $header = $main.find('.mod-header')
       var $link = $header.find('a')
@@ -236,7 +236,7 @@ export class YoukuVideo implements IVideo {
       var rate
       return {
         title,
-        img,
+        cover,
         url,
         type,
         desc,
@@ -246,10 +246,10 @@ export class YoukuVideo implements IVideo {
     var $pages = $('.page-nav li')
     return {
       pages: +$pages.last().prev().text(),
-      cur: +$pages.filter('.current').text(),
+      page: +$pages.filter('.current').text(),
       items
     }
-  }
+  },
   async getVideoInfo(url: string): Promise<any> {
     var html: string = await req.get(url)
     var $ = cheerio.load(html)
@@ -287,6 +287,15 @@ export class YoukuVideo implements IVideo {
 
 // video.search('西部世界').then(console.log)
 // video.getVideoInfo('https://v.youku.com/v_show/id_XMTQ3OTY0MzIwMA==.html?spm=a2h0j.11185381.listitem_page2.5~A').then(console.log)
+
+export function getVideor(type: string) {
+  if (type === 'qq') {
+    return video_tencent
+  } if (type === 'youku') {
+    return video_youku
+  }
+  throw new Error('暂无功能')
+}
 
 export const videoSites = [
   {

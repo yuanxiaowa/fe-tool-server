@@ -1,6 +1,7 @@
 {
   "script": "index.js",
   "name": "index",
+  "node_args": [],
   "env": {},
   "merge_logs": true,
   "vizion": true,
@@ -10,7 +11,7 @@
   "pmx": true,
   "automation": true,
   "treekill": true,
-  "username": "oudingyin",
+  "username": "dingyin.ou",
   "windowsHide": true,
   "kill_retry_time": 100,
   "write": true

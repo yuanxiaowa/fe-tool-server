@@ -1,0 +1,19 @@
+type VideoList {
+  items: [JSON]
+  pages: Int
+  page: Int
+}
+
+type VideoInfo {
+  title: String
+  type: String
+  cover: String
+  url: String
+  desc: String
+  rate: Int
+}
+
+type Query {
+  videoSearch(kw: String!, type: String!, page: Int):VideoList
+  video(url: String!, type: String!):VideoInfo
+}
