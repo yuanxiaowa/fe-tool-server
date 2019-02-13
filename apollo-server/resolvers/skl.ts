@@ -17,9 +17,9 @@ export default getResolver({
     async editSkl({
       id,
       content,
-      path
+      path,
       ext
-    }) {
+    }:any) {
       var promises = []
       if (!path || path === '-') {
         path = getPath(id, ext)

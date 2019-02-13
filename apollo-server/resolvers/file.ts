@@ -30,7 +30,7 @@ export default {
       path: string
       contents: string
     }) => save(path, contents),
-    removeFile: R.compose(remove, getPath, R.nthArg(1))
+    removeFile: R.compose(remove, getPath, R.nthArg(1)),
     mkdir: R.compose(mkdir, getPath, R.nthArg(1))
   }
 }
