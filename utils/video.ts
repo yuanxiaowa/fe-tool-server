@@ -21,6 +21,10 @@ interface ListItem {
   type: VideoType,
   desc: string,
   rate: number | undefined
+  series?: {
+    name: string
+    url: string
+  }[]
 }
 
 export interface IVideo {
@@ -70,13 +74,25 @@ export const video_tencent: IVideo = {
       var ele_desc = $ele.find('.desc_text')[0]
       var desc = ele_desc && ele_desc.firstChild.nodeValue
       var rate = +$ele.find('.result_score').text()
+      var $list = $ele.find('._playlist .item').filter(':not(.item_fold)').find('a')
+      var series: any
+      if ($list.length > 0) {
+        series = $list.map(function (_, ele) {
+          var $ele = $(ele)
+          return {
+            name: $ele.text().trim(),
+            url: $ele.attr('href')
+          }
+        }).get()
+      }
       return {
         title,
         cover,
         url,
         type,
         desc,
-        rate
+        rate,
+        series
       }
     }).get()
     var page_str = $('.search_container').attr('r-props')
@@ -213,7 +229,8 @@ export const video_youku: IVideo = {
   async search(kw: string, page = 1) {
     var html: string = await req.get(`https://so.youku.com/search_video/q_${encodeURI(kw)}`, {
       qs: {
-        pg: page
+        pg: page,
+        aaid: '194eb56f05e260ad3e1eec35e8d43ece'
       }
     })
     var str = getMatch(
@@ -234,13 +251,25 @@ export const video_youku: IVideo = {
       var ele_desc = $main.find('.mod-info .row-ellipsis span')[0]
       var desc = ele_desc && ele_desc.lastChild.nodeValue
       var rate
+      var $list = $ele.find('.mod-play-list').children().not('.item-expand,.item-hold').children()
+      var series: any
+      if ($list.length > 0) {
+        series = $list.map(function (_, ele) {
+          var $ele = $(ele)
+          return {
+            name: $ele.text().trim(),
+            url: $ele.attr('href')
+          }
+        }).get()
+      }
       return {
         title,
         cover,
         url,
         type,
         desc,
-        rate
+        rate,
+        series
       }
     }).get()
     var $pages = $('.page-nav li')
