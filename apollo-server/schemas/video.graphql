@@ -10,10 +10,26 @@ type VideoInfo {
   cover: String
   url: String
   desc: String
-  rate: Int
+  rate: Float
+  series: JSON
+}
+
+type VideoSite {
+  id: ID!
+  text: String!
+  value: String!
+  direct: Boolean
+}
+
+type VideoResolver {
+  id: ID!
+  text: String!
+  value: String!
 }
 
 type Query {
   videoSearch(kw: String!, type: String!, page: Int):VideoList
-  video(url: String!, type: String!):VideoInfo
+  videoSites: [VideoSite]
+  video(url: String!):VideoInfo
+  videoResolvers: [VideoResolver]
 }

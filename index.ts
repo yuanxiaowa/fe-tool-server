@@ -58,12 +58,17 @@ apollowServer.applyMiddleware({
 })
 app.use((ctx, next) => {
   ctx.set('Access-Control-Allow-Origin', '*')
+  if (ctx.method === 'OPTIONS') {
+    ctx.status = 200
+    let h = ctx.headers['Access-Control-Request-Headers'.toLocaleLowerCase()];
+    h && ctx.set('Access-Control-Allow-Headers', h)
+    return
+  }
   return next()
 })
 app.use(koaBody())
 app.use(router.routes()).use(router.allowedMethods())
 app.use((ctx) => {
-  console.log(ctx.request.url)
   ctx.type = 'html'
   if (ctx.path.endsWith('.html')) {
     ctx.body = createReadStream(path.join(__dirname, 'public', ctx.path))

@@ -1,5 +1,5 @@
 import { getResolver } from "../util";
-import { getVideor } from "../../utils/video";
+import { getVideor, videoResolvers, videoSites, getVideorFromUrl } from "../../utils/video";
 
 export default getResolver({
   Query: {
@@ -12,10 +12,11 @@ export default getResolver({
       return videor.search(kw, page + 1)
     },
     async video({
-      url,
-      type
+      url
     }: any) {
-      return getVideor(type).getVideoInfo(url)
-    }
+      return getVideorFromUrl(url).getVideoInfo(url)
+    },
+    videoResolvers: () => videoResolvers,
+    videoSites: () => videoSites
   }
 })

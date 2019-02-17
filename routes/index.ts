@@ -2,6 +2,8 @@ import Router = require('koa-router')
 import fs = require('fs')
 import Path = require('path')
 import cp = require('child_process')
+import request = require('request-promise-native')
+import R = require('ramda')
 
 const router = new Router()
 
@@ -32,6 +34,24 @@ router.get('/exec', (ctx) => {
   }
   stdout.on('data', write()).on('close', end)
   stderr.on('data', write('error'))
+})
+
+router.all('/proxy', ctx => {
+  var url = ctx.headers.url
+  var headers = Object.assign({}, ctx.headers);
+  ['referer', 'host', 'url', 'origin'].forEach(name => {
+    delete headers[name]
+  })
+  var req = request(url, {
+    method: ctx.method,
+    qs: ctx.query,
+    headers
+  })
+  ctx.respond = false
+  if (ctx.method === 'POST' || ctx.method === 'PUT') {
+    req.form(ctx.request.rawBody)
+  }
+  req.pipe(ctx.res)
 })
 
 export default router
