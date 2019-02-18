@@ -12,6 +12,7 @@ type VideoInfo {
   desc: String
   rate: Float
   series: JSON
+  nodirect: Boolean
 }
 
 type VideoSite {

@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio'
 import fs = require('fs-extra')
 import qs = require('querystring')
 
-const { getBanliUrl, sign } = { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } //require('./banli_tool');
+const { getBanliUrl, sign } = /* { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } // */require('./banli_tool');
 
 const req = request.defaults({
   headers: {
@@ -51,6 +51,7 @@ export interface IVideo {
     desc: string;
     url?: string | null
     rate?: number
+    nodirect?: boolean
   }>
 }
 
@@ -572,7 +573,7 @@ const mgtv: IVideo = {
       let str = (<RegExpMatchArray>html.match(/\((.*)\)/))[1]
       let data = JSON.parse(str)
       if (data.code === 200) {
-        let items = data.data.list.map((item:any) => {
+        let items = data.data.list.map((item: any) => {
           return {
             title: item.t1,
             url: this.origin + item.url
@@ -742,13 +743,14 @@ const siguady: IVideo = {
     var $ = cheerio.load(html)
     var title = $('h1').text().replace('在线观看', '')
     var data = getJsData((<string>$('#cms_play script').html()).replace('var ', 'return '))
-    var burl = getBanliUrl(data)
+    var m_type = data.type
     var $navs = $('.play_nav').children()
     var url
     var type
     var type_name = $navs.eq(2).text().replace('吧', '')
     var $links = $('#con_playlist_1 a')
     var series
+    var nodirect
     if ($links.length > 1) {
       var items = $links.map((_, ele) => {
         var $ele = $(ele)
@@ -765,36 +767,45 @@ const siguady: IVideo = {
     } else {
       type = 1
     }
-    if (burl) {
-      html = await req.get(burl, {
-        headers: {
-          Referer: 'http://api.siguady.com'
+    if (m_type === 'qiyi') {
+      nodirect = true
+      url = data.url
+    } else {
+      var burl = getBanliUrl(data)
+      if (burl) {
+        html = await req.get(burl, {
+          headers: {
+            Referer: 'http://api.siguady.com'
+          }
+        })
+        if (m_type === 'DPm3u8') {
+          url = (<RegExpExecArray>html.match(/url: '(.*?)'/))[1]
+        } else {
+          // writeFile(html, 'a.html')
+          let pstr = (<RegExpMatchArray>html.match(/eval\("([^"]+)/))[1]
+          let pstr2 = eval('"' + pstr + '"')
+          console.log(pstr2)
+          let md5_str = (<RegExpMatchArray>pstr2.match(/\$\('#hdMd5'\)\.val\('(\w+)/))[1]
+          if (m_type === 'zzz') {
+            m_type = 'weiyun'
+          }
+          let ret = await req.post('http://api.siguady.com/mdparse/url.php', {
+            form: {
+              id: data.url,
+              type: m_type,
+              siteuser: '',
+              hd: '',
+              lg: '',
+              md5: sign(md5_str)
+            },
+            headers: {
+              Referer: 'http://api.siguady.com'
+            }
+          })
+          console.log(ret)
+          url = JSON.parse(ret).url
         }
-      })
-      let pstr = (<RegExpMatchArray>html.match(/eval\("([^"]+)/))[1]
-      let pstr2 = eval('"' + pstr + '"')
-      let md5_str = (<RegExpMatchArray>pstr2.match(/\$\('#hdMd5'\)\.val\('(\w+)/))[1]
-      let type = data.type
-      if (type === 'zzz') {
-        type = 'weiyun'
-      } else if (type === 'qiyi') {
-        type = 'iqiyiclient'
       }
-      let ret = await req.post('http://api.siguady.com/mdparse/url.php', {
-        form: {
-          id: data.url,
-          type,
-          siteuser: '',
-          hd: '',
-          lg: '',
-          md5: sign(md5_str)
-        },
-        headers: {
-          Referer: 'http://api.siguady.com'
-        }
-      })
-      console.log(ret)
-      url = JSON.parse(ret).url
     }
     return {
       title,
@@ -802,7 +813,8 @@ const siguady: IVideo = {
       type,
       type_name,
       url,
-      series
+      series,
+      nodirect
     }
   }
 }
@@ -918,7 +930,8 @@ export function getVideor(type: string) {
 }
 
 export function getVideorFromUrl(url: string) {
-  var item = videoSites.find(item => url.startsWith(item.value))
+  var _url = url.replace(/https?:\/\//, '')
+  var item = videoSites.find(item => _url.startsWith(item.value))
   if (item) {
     return mappings[item.id]
   }
@@ -934,75 +947,75 @@ export const videoSites: {
     {
       "id": "tencent",
       "text": "腾讯视频",
-      "value": "https://v.qq.com"
+      "value": "v.qq.com"
     },
     {
       "id": "youku",
       "text": "优酷",
-      "value": "https://v.youku.com"
+      "value": "v.youku.com"
     },
     {
       "id": "bilibili",
       "text": "哔哩哔哩",
-      "value": "http://www.bilibili.com"
+      "value": "www.bilibili.com"
     },
     {
       id: 'imeiju',
       text: '爱美剧',
-      value: 'https://www.imeiju.cc',
+      value: 'www.imeiju.cc',
       direct: true
     },
     {
       "id": "tudou",
       "text": "土豆",
-      "value": "https://video.tudou.com"
+      "value": "video.tudou.com"
     },
     {
       "id": "iqiyi",
       "text": "爱奇艺",
-      "value": "http://www.iqiyi.com"
+      "value": "www.iqiyi.com"
     },
     {
       "id": "mgtv",
       "text": "芒果TV",
-      "value": "https://www.mgtv.com"
+      "value": "www.mgtv.com"
     },
     {
       "id": "le",
       "text": "乐视网",
-      "value": "https://www.le.com"
+      "value": "www.le.com"
     },
     {
       "id": "sohu",
       "text": "搜狐视频",
-      "value": "https://tv.sohu.com"
+      "value": "tv.sohu.com"
     },
     {
       id: 'siguady',
-      value: "http://www.siguady.com",
+      value: "www.siguady.com",
       text: "板栗电影网",
       direct: true
     },
     {
       id: 'qpgyy',
-      value: "http://www.qpgyy.com",
+      value: "www.qpgyy.com",
       text: "青苹果影院",
       direct: true
     },
     {
       "id": "pptv",
       "text": "pptv",
-      "value": "http://v.pptv.com"
+      "value": "v.pptv.com"
     },
     {
       "id": "360kan",
       "text": "360影视",
-      "value": "http://v.360kan.com"
+      "value": "v.360kan.com"
     },
     {
       "id": "1905",
       "text": "1905",
-      "value": "http://vip.1905.com"
+      "value": "vip.1905.com"
     },
     {
       "id": 'migu',
@@ -1012,157 +1025,157 @@ export const videoSites: {
     {
       "id": "acfun",
       "text": "acfun",
-      "value": "http://www.acfun.cn"
+      "value": "www.acfun.cn"
     },
     {
       "id": "yinyuetai",
       "text": "音悦台",
-      "value": "http://v.yinyuetai.com"
+      "value": "v.yinyuetai.com"
     },
     {
       "id": "kugou",
       "text": "kugou",
-      "value": "http://www.kugou.com"
+      "value": "www.kugou.com"
     },
     {
       "id": "qq",
       "text": "qq",
-      "value": "https://y.qq.com"
+      "value": "y.qq.com"
     },
     {
       "id": "lizhi",
       "text": "lizhi",
-      "value": "http://cdn1.lizhi.fm"
+      "value": "cdn1.lizhi.fm"
     },
     {
       "id": "ximalaya",
       "text": "ximalaya",
-      "value": "https://www.ximalaya.com"
+      "value": "www.ximalaya.com"
     },
     {
       "id": "yy",
       "text": "yy",
-      "value": "http://www.yy.com"
+      "value": "www.yy.com"
     },
     {
       "id": "wasu",
       "text": "wasu",
-      "value": "https://www.wasu.cn"
+      "value": "www.wasu.cn"
     },
     {
       "id": "163",
       "text": "163",
-      "value": "http://open.163.com"
+      "value": "open.163.com"
     },
     {
       "id": "56",
       "text": "56",
-      "value": "http://www.56.com"
+      "value": "www.56.com"
     },
     {
       "id": "fun",
       "text": "fun",
-      "value": "http://www.fun.tv"
+      "value": "www.fun.tv"
     },
     {
       "id": "jsyunbf",
       "text": "jsyunbf",
-      "value": "http://dy2.jsyunbf.com"
+      "value": "dy2.jsyunbf.com"
     },
     {
       "id": "meitudata",
       "text": "meitudata",
-      "value": "http://mvvideo2.meitudata.com"
+      "value": "mvvideo2.meitudata.com"
     },
     {
       "id": "kankan",
       "text": "kankan",
-      "value": "http://vod.kankan.com"
+      "value": "vod.kankan.com"
     },
     {
       "id": "daum",
       "text": "daum",
-      "value": "http://media.daum.net"
+      "value": "media.daum.net"
     },
     {
       "id": "sina",
       "text": "sina",
-      "value": "http://video.sina.com.cn"
+      "value": "video.sina.com.cn"
     },
     {
       "id": 'weibo',
       "text": '微博',
-      "value": "http://weibo.com"
+      "value": "weibo.com"
     },
     {
       "id": "vlook",
       "text": "vlook",
-      "value": "http://www.vlook.cn"
+      "value": "www.vlook.cn"
     },
     {
       "id": "meipai",
       "text": "meipai",
-      "value": "http://www.meipai.com"
+      "value": "www.meipai.com"
     },
     {
       "id": "28a",
       "text": "28a",
-      "value": "http://v.28a.im"
+      "value": "v.28a.im"
     },
     {
       "id": "duowan",
       "text": "duowan",
-      "value": "http://ahuya.duowan.com"
+      "value": "ahuya.duowan.com"
     },
     {
       "id": "longzhu",
       "text": "longzhu",
-      "value": "http://v.longzhu.com"
+      "value": "v.longzhu.com"
     },
     {
       "id": "tangdou",
       "text": "tangdou",
-      "value": "http://www.tangdou.com"
+      "value": "www.tangdou.com"
     },
     {
       "id": "miaopai",
       "text": "miaopai",
-      "value": "http://n.miaopai.com"
+      "value": "n.miaopai.com"
     },
     {
       "id": "kuaishou",
       "text": "kuaishou",
-      "value": "https://live.kuaishou.com"
+      "value": "live.kuaishou.com"
     },
     {
       "id": "17173",
       "text": "17173",
-      "value": "http://v.17173.com"
+      "value": "v.17173.com"
     },
     {
       "id": "pearvideo",
       "text": "pearvideo",
-      "value": "https://www.pearvideo.com"
+      "value": "www.pearvideo.com"
     },
     {
       "id": "v1",
       "text": "v1",
-      "value": "http://www.v1.cn"
+      "value": "www.v1.cn"
     },
     {
       "id": "eastday",
       "text": "eastday",
-      "value": "http://video.eastday.com"
+      "value": "video.eastday.com"
     },
     {
       "id": "toutiao",
       "text": "toutiao",
-      "value": "http://www.toutiao.com"
+      "value": "www.toutiao.com"
     },
     {
       "id": "365yg",
       "text": "365yg",
-      "value": "https://www.365yg.com"
+      "value": "www.365yg.com"
     },
     /* {
       "id": null,
@@ -1182,7 +1195,7 @@ export const videoSites: {
     {
       "id": "mtime",
       "text": "mtime",
-      "value": "http://video.mtime.com"
+      "value": "video.mtime.com"
     },
     /* {
       "id": null,
@@ -1207,7 +1220,7 @@ export const videoSites: {
     {
       "id": "weiyun",
       "text": "weiyun",
-      "value": "https://share.weiyun.com"
+      "value": "share.weiyun.com"
     }
   ]
 
@@ -1262,9 +1275,13 @@ function getMatch(reg: RegExp, str: string) {
   return (<string[]>reg.exec(str))[1]
 }
 
-export function normalizeUrl(url:string, protocal = 'https') {
+export function normalizeUrl(url: string, protocal = 'https') {
   if (url.startsWith('//')) {
     return `${protocal}:${url}`
   }
   return url
+}
+
+function writeFile(content: string, filename: string) {
+  fs.writeFile(filename, content, () => { })
 }
