@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio'
 import fs = require('fs-extra')
 import qs = require('querystring')
 
-const { getBanliUrl, sign } = require('./banli_tool');
+const { getBanliUrl, sign } = { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } //require('./banli_tool');
 
 const req = request.defaults({
   headers: {
@@ -49,7 +49,7 @@ export interface IVideo {
     } | undefined;
     publish_date?: string;
     desc: string;
-    url?: string
+    url?: string | null
     rate?: number
   }>
 }
@@ -57,7 +57,7 @@ export interface IVideo {
 export const tencent: IVideo = {
   origin: 'https://v.qq.com',
   async search(kw: string, page = 1) {
-    var html: string = await req.get('https://v.qq.com/x/search/', {
+    var html: string = await req.get(`${this.origin}/x/search/`, {
       qs: {
         q: kw,
         cur: page
@@ -89,6 +89,7 @@ export const tencent: IVideo = {
             url: $ele.attr('href')
           }
         }).get()
+        url = series[0].url
       }
       return {
         title,
@@ -223,14 +224,6 @@ export const tencent: IVideo = {
   }
 }
 
-function getJsData(text: string) {
-  return new Function(text)()
-}
-
-function getMatch(reg: RegExp, str: string) {
-  return (<string[]>reg.exec(str))[1]
-}
-
 /* var video = new TencentVideo()
 video.search('西部世界').then(console.log)
 video.getVideoInfo('https://v.qq.com/x/cover/1egcxh1l6d8jyt1/i0026tithen.html').then(console.log) */
@@ -238,7 +231,7 @@ video.getVideoInfo('https://v.qq.com/x/cover/1egcxh1l6d8jyt1/i0026tithen.html').
 export const youku: IVideo = {
   origin: 'https://so.youku.com',
   async search(kw: string, page = 1) {
-    var html: string = await req.get(`https://so.youku.com/search_video/q_${encodeURI(kw)}`, {
+    var html: string = await req.get(`${this.origin}/search_video/q_${encodeURI(kw)}`, {
       qs: {
         pg: page,
         aaid: '194eb56f05e260ad3e1eec35e8d43ece'
@@ -257,10 +250,7 @@ export const youku: IVideo = {
       var $header = $main.find('.mod-header')
       var $link = $header.find('a')
       var title = $link.text()
-      var url = $link.attr('href')
-      if (url.startsWith('//')) {
-        url = 'https:' + url
-      }
+      var url = normalizeUrl($link.attr('href'))
       var type = $header.find('.base-type').text()
       var ele_desc = $main.find('.mod-info .row-ellipsis span')[0]
       var desc = ele_desc && ele_desc.lastChild.nodeValue
@@ -307,10 +297,7 @@ export const youku: IVideo = {
     if ($links.length > 0) {
       let items = $links.map((i, ele) => {
         var $ele = $(ele)
-        let url = $ele.attr('href')
-        if (url.startsWith('//')) {
-          url = 'https:' + url
-        }
+        let url = normalizeUrl($ele.attr('href'))
         return {
           title: $ele.find('.sn_num').text(),
           url
@@ -337,7 +324,7 @@ export const youku: IVideo = {
 const iqiyi: IVideo = {
   origin: 'https://so.iqiyi.com',
   async search(kw, page) {
-    var html: string = await req.get(`https://so.iqiyi.com/so/q_${encodeURI(kw)}_ctg__t_0_page_${page}_p_1_qc_0_rd__site__m_1_bitrate_`)
+    var html: string = await req.get(`${this.origin}/so/q_${encodeURI(kw)}_ctg__t_0_page_${page}_p_1_qc_0_rd__site__m_1_bitrate_`)
     var $ = cheerio.load(html)
     var items = $('.mod_result_list').children().map(function (i, ele) {
       var $ele = $(ele)
@@ -417,6 +404,200 @@ const iqiyi: IVideo = {
   }
 }
 
+const tudou: IVideo = {
+  origin: 'https://video.tudou.com',
+  async search(kw, page) {
+    var html: string = await req.get(`https://www.soku.com/nt/search/q_${encodeURI(kw)}`, {
+      qs: {
+        page
+      }
+    })
+    var $ = cheerio.load(html)
+    var items = $('.DIR .s_dir').children().not('.s_variety').map(function (i, ele) {
+      var $ele = $(ele)
+      var $detail = $ele.find('.s_detail')
+      var $h2 = $detail.find('h2')
+      var $title = $h2.children().first()
+      var title = $title.text()
+      var url = $title.attr('href')
+      var type = $h2.next().text()
+      var cover = $ele.find('.s_thumb img').attr('src')
+      var desc = $detail.find('.info_cont').text().trim()
+      var rate = +$ele.find('.source').text()
+      var series
+      var $links = $detail.find('.s_items').last().find('li:not(.all) a')
+      if ($links.length > 0) {
+        series = $links.map((i, ele) => {
+          var $ele = $(ele)
+          return {
+            name: $ele.find('span').text(),
+            url: $ele.attr('href')
+          }
+        }).get()
+      }
+      return {
+        title,
+        url,
+        type,
+        cover,
+        desc,
+        rate,
+        series
+      }
+    }).get()
+    items = items.concat($('.sk-vlist .v').map((i, ele) => {
+      var $ele = $(ele)
+      var $cover = $ele.find('img')
+      var title = $cover.attr('alt')
+      var cover = 'https:' + $cover.attr('src')
+      var url = 'https:' + $ele.find('a').eq(1).attr('href')
+      return {
+        title,
+        url,
+        type: '短视频',
+        cover,
+        desc: ''
+      }
+    }).get())
+    var pages = +$('.sk_pager').find('li:not(.next)').last().find('a').text()
+    return {
+      page,
+      pages,
+      items
+    }
+  },
+  async getVideoInfo(url) {
+    var html: string = await req.get(url)
+    var data_str = (<RegExpMatchArray>html.match(/__INITIAL_STATE__=(.*?);<\/script>/))[1]
+    var data = JSON.parse(data_str)
+    var info = data.videoDesc.detail
+    var title = info.title
+    var rate
+    var desc = info.desc
+    var cover = info.img
+    var series
+    var type = info.cats
+    var type_name = info.cats
+    var list_info = data.result
+    if (list_info) {
+      let items = list_info.videos.map((item: any) => {
+        return {
+          title: item.name,
+          url: item.url
+        }
+      })
+      series = {
+        title: list_info.title,
+        items
+      }
+      type = 2
+    } else {
+      type = 1
+    }
+    return {
+      title,
+      desc,
+      cover,
+      type,
+      type_name,
+      series,
+      rate
+    }
+  }
+}
+
+const mgtv: IVideo = {
+  origin: 'https://www.mgtv.com',
+  async search(kw: string, page = 1) {
+    var html: string = await req.get(`https://so.mgtv.com/so/k-${encodeURI(kw)}`, {
+      qs: {
+        page
+      }
+    })
+    var $ = cheerio.load(html)
+    var items: ListItem[] = $('.result-content').map((i, ele) => {
+      var $ele = $(ele)
+      var $link = $ele.find('a').first()
+      var $img = $link.find('img')
+      var cover = $img.attr('src')
+      var title = $img.attr('alt')
+      var url = normalizeUrl($link.attr('href'))
+      var $detail = $ele.find('.vari_intro')
+      var type = $detail.find('.info_it_cate .cont').text().trim()
+      var desc = $detail.find('.desc_text').text().trim()
+      var rate
+      var $list = $detail.find('.so-result-alist .report-click')
+      var series: any
+      if ($list.length > 0) {
+        series = $list.map(function (_, ele) {
+          var $ele = $(ele)
+          return {
+            name: $ele.text().trim(),
+            url: normalizeUrl($ele.attr('href'))
+          }
+        }).get()
+        url = series[0].url
+      }
+      return {
+        title,
+        cover,
+        url,
+        type,
+        desc,
+        rate,
+        series
+      }
+    }).get()
+    var pages = +$('#paginator a').not('.turn').last().text()
+    return {
+      pages,
+      page,
+      items
+    }
+  },
+  async getVideoInfo(url: string): Promise<any> {
+    var html: string = await req.get(url)
+    var $ = cheerio.load(html)
+    var title = $('h1').text().trim()
+    var desc = $('.u-meta-intro .details').text().trim()
+    var publish_date
+    var rate
+    var type = 1
+    var type_name = $('.v-panel-route').children().last().text()
+    var series
+    if (true) {
+      let fname = `jQuery18208230071311003675_1550481373888`
+      let video_id = (<RegExpMatchArray>url.match(/\w+(?=\.html)/))[0]
+      html = await req.get(`https://pcweb.api.mgtv.com/variety/showlist?video_id=${video_id}&cxid=&version=5.5.35&callback=${fname}&_support=10000000&_=${Date.now()}`)
+      let str = (<RegExpMatchArray>html.match(/\((.*)\)/))[1]
+      let data = JSON.parse(str)
+      if (data.code === 200) {
+        let items = data.data.list.map((item:any) => {
+          return {
+            title: item.t1,
+            url: this.origin + item.url
+          }
+        })
+        series = {
+          title: data.data.title,
+          items
+        }
+        type = 2
+      }
+    }
+    return {
+      title,
+      desc,
+      series,
+      type,
+      type_name,
+      publish_date,
+      rate
+    }
+  }
+
+}
+
 const imeiju: IVideo = {
   origin: 'https://www.imeiju.cc',
   async search(kw, page) {
@@ -470,7 +651,7 @@ const imeiju: IVideo = {
     var html: string = await req.get(_url)
     var $ = cheerio.load(html)
     var $title = $('.footer>a')
-    var title = $title .text() + $title[0].nextSibling.nodeValue.trim()
+    var title = $title.text() + $title[0].nextSibling.nodeValue.trim()
     var type
     var type_name = ''
     var $links = $('#playlist1 a')
@@ -506,6 +687,7 @@ const imeiju: IVideo = {
   }
 }
 
+// 板栗电影网
 const siguady: IVideo = {
   origin: 'http://www.siguady.com',
   async search(kw, page) {
@@ -717,7 +899,9 @@ var mappings: Record<string, IVideo> = {
   iqiyi,
   siguady,
   qpgyy,
-  imeiju
+  imeiju,
+  tudou,
+  mgtv
 }
 
 // var video = new YoukuVideo()
@@ -771,7 +955,7 @@ export const videoSites: {
     {
       "id": "tudou",
       "text": "土豆",
-      "value": "http://video.tudou.com"
+      "value": "https://video.tudou.com"
     },
     {
       "id": "iqiyi",
@@ -781,17 +965,17 @@ export const videoSites: {
     {
       "id": "mgtv",
       "text": "芒果TV",
-      "value": "http://www.mgtv.com"
+      "value": "https://www.mgtv.com"
     },
     {
       "id": "le",
       "text": "乐视网",
-      "value": "http://www.le.com"
+      "value": "https://www.le.com"
     },
     {
       "id": "sohu",
       "text": "搜狐视频",
-      "value": "http://tv.sohu.com"
+      "value": "https://tv.sohu.com"
     },
     {
       id: 'siguady',
@@ -1037,5 +1221,50 @@ export const videoResolvers = [
     id: "baiyug",
     text: "百域阁",
     value: "http://app.baiyug.cn:2019/vip/index.php"
+  },
+  {
+    id: 'bbbbbb',
+    text: '思古解析',
+    value: 'https://api.bbbbbb.me/jx/'
+  },
+  {
+    id: 'myxin',
+    text: '黑米免费解析',
+    value: 'https://www.myxin.top/jx/api/'
+  },
+  {
+    id: '618g',
+    text: '618G免费解析',
+    value: 'https://jx.618g.com'
+  },
+  {
+    id: 'hackmg',
+    text: '97解析',
+    value: 'http://vip.hackmg.com/jx/'
+  },
+  {
+    id: 'wslmf',
+    text: '流氓凡解析',
+    value: 'https://jx.wslmf.com'
+  },
+  {
+    id: '52xmw',
+    text: '星梦解析',
+    value: 'https://api.52xmw.com/'
   }
 ]
+
+function getJsData(text: string) {
+  return new Function(text)()
+}
+
+function getMatch(reg: RegExp, str: string) {
+  return (<string[]>reg.exec(str))[1]
+}
+
+export function normalizeUrl(url:string, protocal = 'https') {
+  if (url.startsWith('//')) {
+    return `${protocal}:${url}`
+  }
+  return url
+}
