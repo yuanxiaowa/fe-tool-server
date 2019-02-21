@@ -1,0 +1,19 @@
+type NovelInfoItem {
+  text: String
+  url: String
+  current: Boolean
+}
+
+type NovelDir {
+  title: String
+  items: [JSON]
+}
+
+type NovelInfo {
+  dirs: [JSON]
+  content: String
+}
+
+type Query {
+  novel(url: String!):NovelInfo
+}

@@ -23,4 +23,5 @@ enum Role {
 # import Query.*, Mutation.* from './schemas/json.graphql'
 # import Query.* from './schemas/video.graphql'
 # import Query.* from './schemas/music.graphql'
+# import Query.* from './schemas/novel.graphql'
 # import Mutation.* from './schemas/skl.graphql'
