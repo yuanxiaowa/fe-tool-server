@@ -1,19 +1,25 @@
-type NovelInfoItem {
-  text: String
-  url: String
-  current: Boolean
-}
-
-type NovelDir {
+type BookInfo {
   title: String
-  items: [JSON]
+  author: String
+  sections: [JSON]
 }
 
 type NovelInfo {
-  dirs: [JSON]
-  content: String
+  title: String
+  contents: [String]
+  book: BookInfo
+  navs: [JSON]
+}
+
+type SearchInfo {
+  page: Int
+  pages: Int
+  items: [JSON]
 }
 
 type Query {
+  novelSearch(kw:String!, type: String!, page: Int): SearchInfo
+  novelDepInfo(url:String!): JSON
+  novelRecomms(type:String!): [JSON]
   novel(url: String!):NovelInfo
 }
