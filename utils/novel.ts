@@ -1,24 +1,20 @@
 import { CramlerEntity, getMatcher } from './crawler-base';
+import iconv = require('iconv-lite');
 
 interface BookSection {
   title: string
   url?: string
   current?: boolean
-  sections?: BookSection[]
-}
-
-interface BookInfo {
-  title: string
-  author: string
-  sections?: BookSection[]
+  items?: BookSection[]
 }
 
 interface SearchItem {
-  id: number
+  id?: number
   title: string
-  author: string
-  type: string
-  url: string
+  author?: string
+  type?: string
+  url?: string
+  cover?: string
 }
 
 interface DepItem {
@@ -28,6 +24,12 @@ interface DepItem {
   type: string
   desc: string[]
   items: BookSection[]
+}
+
+interface BookInfo {
+  title: string
+  author: string
+  items?: BookSection[]
 }
 
 interface Info {
@@ -45,13 +47,13 @@ interface Recomms {
   items: {
     title: string
     url: string
-    author: string
+    author?: string
     cover?: string
     type?: string
   }[]
 }
 
-class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
+class C99lib extends CramlerEntity<DepItem, Info, SearchItem, Recomms> {
   async getRecomms() {
     var $ = await this.requestAndParse(this.origin)
     var $tabs = $('#tab div')
@@ -73,8 +75,7 @@ class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
     }).get()
     return ret
   }
-  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: { id: number; title: string; author: string; type: string; url: string; }[]; }> {
-    page = page || 1
+  async search(kw: string, page = 1): Promise<{ page: number; pages: number; items: { id: number; title: string; author: string; type: string; url: string; }[]; }> {
     var $ = await this.requestAndParse(this.normalUrl(`/book/search.list.php`), {
       keyword: kw,
       stat: true,
@@ -113,20 +114,20 @@ class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
       author,
       cover,
       type,
-      items: this.getSections($, title)
+      items: this.getItems($, title)
     }
   }
 
-  private getSections($: CheerioStatic, url?: string) {
+  private getItems($: CheerioStatic, url?: string) {
     var prev: BookSection
-    var sections: BookSection[] = []
+    var items: BookSection[] = []
     var $items = $('#dir .dir').find('dt,dd')
     if (!$items.eq(0).is('dt')) {
       prev = {
         title: '',
-        sections: []
+        items: []
       }
-      sections.push(prev)
+      items.push(prev)
     }
     $items.each((_, ele) => {
       var $ele = $(ele)
@@ -135,22 +136,22 @@ class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
         if (!prev || prev.title !== title) {
           prev = {
             title,
-            sections: []
+            items: []
           }
-          sections.push(prev)
+          items.push(prev)
         }
       } else {
         let current = $ele.hasClass('current')
         let _url = current ? url : this.normalUrl($ele.find('a').attr('href'))
         // @ts-ignore
-        prev.sections.push({
+        prev.items.push({
           title,
           current: current ? true : undefined,
           url: _url
         })
       }
     })
-    return sections
+    return items
   }
 
   async getInfo(url: string) {
@@ -178,13 +179,13 @@ class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
         j = j + 2
       }
     })
-    var sections: BookSection[] = this.getSections($, url)
+    var items: BookSection[] = this.getItems($, url)
     return {
       title: title_arr[2],
       book: {
         title: title_arr[1],
         author: title_arr[3],
-        sections
+        items
       },
       contents
     }
@@ -194,11 +195,11 @@ class C99lib extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
   }
 }
 
-class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
+class Luoxia extends CramlerEntity<DepItem, Info, SearchItem, Recomms> {
   constructor() {
     super('luoxia', 'http://www.luoxia.com')
   }
-  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
+  async search(kw: string, page = 1): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
     var $ = await this.requestAndParse(`http://www.luoxia.com/page/${page}/`, {
       s: kw
     })
@@ -216,7 +217,7 @@ class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
       items
     }
   }
-  async getDepInfo(url: string): Promise<{ [key: string]: any; title: string; items: DepItem[]; }> {
+  async getDepInfo(url: string) {
     var $ = await this.requestAndParse(url)
     var $bd = $('.book-describe')
     var $ps = $bd.find('p')
@@ -224,10 +225,11 @@ class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
     var author = $ps.eq(0).text().split('：')[1]
     var type = $ps.eq(1).text().split('：')[1]
     var desc = $('.describe-html p').map((_, ele) => $(ele).text()).get()
+    var cover = $('.book-img img').attr('src')
     var items = $('.title').map((_, ele) => {
       var $ele = $(ele)
       var title = $ele.find('a').text()
-      var sections = $ele.next().find('a').map((_, ele) => {
+      var items = $ele.next().find('a').map((_, ele) => {
         var $ele = $(ele)
         return {
           title: $ele.attr('title'),
@@ -236,7 +238,7 @@ class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
       }).get()
       return {
         title,
-        sections
+        items
       }
     }).get()
     return {
@@ -244,6 +246,7 @@ class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
       author,
       type,
       desc,
+      cover,
       items
     }
   }
@@ -303,22 +306,65 @@ class Luoxia extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
   }
 }
 
-class Zongheng extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
-  search(kw: string, page: number): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
-    throw new Error("Method not implemented.");
+class Zongheng extends CramlerEntity<DepItem, Info, SearchItem, Recomms> {
+  test(url: string) {
+    return url.startsWith(this.origin) || url.startsWith('http://www.zongheng.com')
   }
-  async getDepInfo(url: string): Promise<{ [key: string]: any; title: string; items: BookSection[]; }> {
-    var [$, $2] = await [this.requestAndParse(url), this.requestAndParse(url.replace('/book/', '/showchapter/'))]
+  async search(kw: string, page = 1): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
+    var $ = await this.requestAndParse(`http://search.zongheng.com/s`, {
+      keyword: kw,
+      pageNo: page
+    })
+    var items = $('.search-result-list').map((_, ele) => {
+      var $ele = $(ele)
+      var cover = $ele.find('img').attr('src')
+      var $link = $ele.find('.tit a')
+      var title = $link.text()
+      var url = $link.attr('href')
+      var $links = $('.bookinfo a')
+      var author = $links.eq(0).text()
+      var type = $links.eq(0).text()
+      return {
+        title,
+        url,
+        cover,
+        author,
+        type
+      }
+    }).get()
+    var pages = Number($('.search_d_pagesize a').last().prev().text())
+    return {
+      page,
+      pages,
+      items
+    }
+  }
+  async getItems(url: string): Promise<BookSection[]> {
+    var $ = await this.requestAndParse(url)
+    var items = $('.chapter-list').last().map((_, ele) => {
+      var $ele = $(ele)
+      var title = $ele.prev().find('.count')[0].previousSibling.nodeValue
+      var items = this.getLinks($ele.find('a'), $)
+      return {
+        title,
+        items
+      }
+    }).get()
+    return items
+  }
+  async getDepInfo(url: string) {
+    var [$, items] = await Promise.all([this.requestAndParse(url), this.getItems(url.replace('/book/', '/showchapter/'))])
     var title = $('.book-name').text().trim()
     var author = $('.au-name a').text()
-    var type = $('.crumb a').eq(1).text()
+    var type = $('.crumb a').eq(1).text().trim()
     var desc = $('.book-dec p').map((_, ele) => $(ele).text()).get()
-    var items: any[] = []
+    var cover = $('.book-img img').attr('src')
     return {
       title,
       author,
       type,
       desc,
+      cover,
       items
     }
   }
@@ -340,14 +386,282 @@ class Zongheng extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
     }).get()
     return ret
   }
-  getInfo(url: string): Promise<Info> {
-    throw new Error("Method not implemented.");
+  async getInfo(url: string): Promise<Info> {
+    var [_] = <RegExpMatchArray>url.match(/\d+\/\d+/)
+    var $ = await this.requestAndParse(`${this.origin}/chapter/${_}.html`)
+    var title = $('.title_txtbox').text()
+    var author = $('.bookinfo a').first().text()
+    var book_title = $('.reader_crumb a').last().text()
+    var contents = this.getContents('.content', $)
+    var navs = $('.chap_btnbox a').first().nextAll().map((_, ele) => {
+      var $ele = $(ele)
+      var url = $ele.attr('href')
+      return {
+        title: $ele.text(),
+        url: url === 'javascript:void(0)' ? '' : url
+      }
+    }).get()
+    return {
+      title,
+      contents,
+      navs,
+      book: {
+        title: book_title,
+        author
+      }
+    }
   }
   constructor() {
-    super('zongheng', 'http://www.zongheng.com')
+    super('zongheng', 'http://book.zongheng.com')
+  }
+}
+
+class Ppzuowen extends CramlerEntity<DepItem, Info, SearchItem, Recomms> {
+  async search(kw: string, page = 0): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
+    var html = await this.request('http://search.ppzuowen.com/cse/search', {
+      qs: {
+        q: kw,
+        p: page - 1,
+        s: '7520588606970330124'
+      }
+    })
+    var $ = this.parse(html)
+    var items = this.getLinks('#results h3 a', $) //.filter(({ url }) => !url.endsWith('.html'))
+    var pages = Number($('#pageFooter').children().not('.n').last().text())
+    return {
+      page,
+      pages,
+      items
+    }
+  }
+  async getDepInfo(url: string) {
+    var $ = await this.requestAndParse(url)
+    var title = $('.articleH22').text()
+    var desc = this.getContents('.text', $)
+    var cover = this.normalUrl($('.ablum img').attr('src'))
+    var author = ''
+    var type = $('.searchWarp').next().find('a').prev().text()
+    var $links = $('.bookList a')
+    var items: BookSection[] = []
+    if ($links.first().text().includes(' ')) {
+      let prev: BookSection
+      $links.each((_, ele) => {
+        var $ele = $(ele)
+        var arr = $ele.text().split(' ')
+        if (!prev || prev.title !== arr[0]) {
+          prev = {
+            title: arr[0],
+            items: []
+          }
+          items.push(prev)
+        }
+        // @ts-ignore
+        prev.items.push({
+          url: this.normalUrl($ele.attr('href')),
+          title: arr[1]
+        })
+      })
+    } else {
+      items.push({
+        title: '',
+        items: this.getLinks($links, $)
+      })
+    }
+    return {
+      title,
+      author,
+      desc,
+      cover,
+      items,
+      type
+    }
+  }
+  async getRecomms(): Promise<Recomms[]> {
+    var $ = await this.requestAndParse(this.origin)
+    var $ele = $('.dyBox').eq(1)
+    var title = $ele.find('h2').text()
+    var items = this.getLinks($ele.find('a'), $)
+    return [{
+      title,
+      items
+    }]
+  }
+  async getInfo(url: string): Promise<Info> {
+    var $ = await this.requestAndParse(url)
+    var title = $('h2').text()
+    var $bd = $('.searchWarp').next().find('a')
+    var book_title = $bd.last().text()
+    // var type = $bd.last().prev().text()
+    var promises = $('.pagelist a').slice(2, -2).map((_, ele) => {
+      var $ele = $(ele)
+      var href = $ele.attr('href')
+      if (href === '#') {
+        return this.getContents('.articleContent', $)
+      }
+      return this.requestAndParse(url.replace(/\w+\.html/, href)).then($ => this.getContents('.articleContent', $))
+    }).get()
+    var items = await Promise.all(promises)
+    var contents: string[] = [].concat.apply([], items)
+    var navs = $('.www4').map((_, ele) => {
+      var $ele = $(ele)
+      var url = $ele.find('a').attr('href')
+      return {
+        url: url ? this.normalUrl(url) : '',
+        title: $ele.text().replace(/【(.*)】/, '$1')
+      }
+    }).get()
+    return {
+      title,
+      contents,
+      navs,
+      book: {
+        title: book_title,
+        author: ''
+      }
+    }
+  }
+
+  async requestAndParse(url: string, qs?: Record<string, any>) {
+    var buffer = await this.request.get(url, {
+      qs,
+      encoding: null
+    })
+    var html = iconv.decode(buffer, 'gb2312')
+    return this.parse(html)
+  }
+  constructor() {
+    super('ppzuowen', 'https://www.ppzuowen.com')
+  }
+}
+
+class Huayu extends CramlerEntity<BookSection, Info, SearchItem, Recomms> {
+  async search(kw: string, page = 1): Promise<{ page: number; pages: number; items: SearchItem[]; }> {
+    var $ = await this.requestAndParse(`http://search.zongheng.com/search/book`, {
+      keyword: kw,
+      pageNo: page
+    })
+    var items = $('.search-result-list').map((_, ele) => {
+      var $ele = $(ele)
+      var cover = $ele.find('img').attr('src')
+      var $link = $ele.find('.tit a')
+      var title = $link.text()
+      var url = $link.attr('href')
+      var $links = $('.bookinfo a')
+      var author = $links.eq(0).text()
+      var type = $links.eq(0).text()
+      return {
+        title,
+        url,
+        cover,
+        author,
+        type
+      }
+    }).get()
+    var pages = Number($('.search_d_pagesize a').last().prev().text())
+    return {
+      page,
+      pages,
+      items
+    }
+  }
+  async getItems(url: string): Promise<BookSection[]> {
+    var $ = await this.requestAndParse(url)
+    var items = this.getLinks($('.pinklow').next().find('a'), $)
+    return [
+      {
+        title: '',
+        items
+      }
+    ]
+  }
+  async getDepInfo(url: string) {
+    var [$, items] = await Promise.all([this.requestAndParse(url), this.getItems(url.replace('/book/', '/showchapter/'))])
+    var $as = $('h1 a')
+    var title = $as.first().text()
+    var author = $as.last().text()
+    var type = $('.loca a').last().text()
+    var desc = $('.jj br').map((_, ele) => ele.nextSibling.nodeValue || '').get()
+    var cover = $('.img img').attr('src')
+    return {
+      title,
+      author,
+      type,
+      desc,
+      cover,
+      items
+    }
+  }
+  async getRecomms(): Promise<Recomms[]> {
+    var $ = await this.requestAndParse(this.origin)
+    return $('.qltj,.third_nor,.zbtj').map((_, ele) => {
+      var $ele = $(ele)
+      var title = $ele.find('h1,h2').first().text()
+      var items = $ele.find('.qt_first,li,.zbtj_box').map(((_, ele) => {
+        var $ele = $(ele)
+        var cover = $ele.find('img').attr('src')
+        var $as = $ele.find('a')
+        var $a = $as.eq($as.length / 2 >> 0)
+        var title = $a.text()
+        var url = this.normalUrl($a.attr('href'))
+        return {
+          title,
+          url,
+          cover
+        }
+      })).get()
+      return {
+        title,
+        items
+      }
+    }).get()
+  }
+  async getInfo(url: string): Promise<Info> {
+    var $ = await this.requestAndParse(url)
+    var book_title = $('h1').text()
+    var title = $('h2').last().text().replace('正文', '')
+    var author = $('.bookinfo a').first().text()
+    var book_title = $('.reader_crumb a').last().text()
+    var contents = $('.book_con p').map((_, ele) => ele.firstChild.nodeValue).get()
+    var $navs = $('.key a')
+    var navs: any[] = []
+    $navs.each((i, ele) => {
+      var $ele = $(ele)
+      var title = $ele.text()
+      if (title === '回目录') {
+        if ($navs.length === 2) {
+          navs.push({
+            title: '无',
+            url: ''
+          })
+        }
+        return
+      }
+      navs.push({
+        title,
+        url: this.normalUrl($ele.attr('href'))
+      })
+    })
+    return {
+      title,
+      contents,
+      navs,
+      book: {
+        title: book_title,
+        author
+      }
+    }
+  }
+  constructor() {
+    super('huayu', 'http://huayu.baidu.com')
   }
 }
 
 export default getMatcher(
-  [new C99lib(), new Luoxia(), new Zongheng()]
+  [
+    new C99lib(),
+    new Luoxia(),
+    new Zongheng(),
+    new Ppzuowen(),
+    new Huayu()
+  ]
 )

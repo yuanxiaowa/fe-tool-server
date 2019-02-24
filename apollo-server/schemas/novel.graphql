@@ -1,7 +1,7 @@
 type BookInfo {
   title: String
   author: String
-  sections: [JSON]
+  items: [JSON]
 }
 
 type NovelInfo {

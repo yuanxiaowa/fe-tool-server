@@ -31,6 +31,7 @@
     "graphql": "^14.0.2",
     "graphql-import": "^0.7.1",
     "graphql-type-json": "^0.2.1",
+    "iconv-lite": "^0.4.24",
     "koa": "^2.5.3",
     "koa-body": "^4.0.4",
     "koa-logger": "^3.2.0",
@@ -39,6 +40,7 @@
     "koa-static-cache": "^5.1.2",
     "lowdb": "^1.0.0",
     "node-pty-prebuilt": "^0.7.6",
+    "ntypescript": "^1.201706190042.1",
     "ramda": "^0.25.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",
@@ -46,6 +48,7 @@
     "socket.io": "^2.1.1",
     "ssh2": "^0.6.1",
     "svn-tool2": "^1.1.7",
+    "typedoc": "^0.14.2",
     "ws": "^6.0.0"
   },
   "devDependencies": {

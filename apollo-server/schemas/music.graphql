@@ -14,7 +14,14 @@ type MusicInfo {
   singer: String
 }
 
+type MusicSite {
+  text: String
+  value: String
+}
+
 type Query {
   musicSearch(kw: String!, type: String!, page: Int):MusicList
+  musicRecomms(type:String!): [JSON]
   music(url: String!, type: String!):MusicInfo
+  musicSites: [MusicSite]
 }

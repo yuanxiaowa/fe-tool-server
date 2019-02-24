@@ -16,10 +16,9 @@ type VideoInfo {
 }
 
 type VideoSite {
-  id: ID!
   text: String!
   value: String!
-  direct: Boolean
+  indirect: Boolean
 }
 
 type VideoResolver {

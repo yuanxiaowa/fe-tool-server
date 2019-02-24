@@ -1,0 +1,196 @@
+[
+  {
+    "name": "I1",
+    "typeParameters": [
+      "T"
+    ],
+    "items": [
+      {
+        "name": "t1",
+        "required": false,
+        "type": "Any",
+        "is_referrence": false
+      },
+      {
+        "name": "key",
+        "addtional": true,
+        "is_referrence": false
+      },
+      {
+        "name": "field2",
+        "required": true,
+        "type": "Type0",
+        "is_referrence": true
+      }
+    ]
+  },
+  {
+    "name": "Type0"
+  },
+  {
+    "name": "I2",
+    "items": [
+      {
+        "name": "ff",
+        "required": true,
+        "is_referrence": false
+      },
+      {
+        "name": "ff2",
+        "required": true,
+        "type": "Type1",
+        "is_referrence": false
+      },
+      {
+        "name": "ff3",
+        "required": true,
+        "type": "Array",
+        "items": {
+          "type": "Type2",
+          "is_referrence": false
+        },
+        "is_referrence": false
+      },
+      {
+        "name": "f1",
+        "required": true,
+        "is_referrence": false
+      },
+      {
+        "name": "f2",
+        "required": true,
+        "type": "Number",
+        "is_referrence": false
+      },
+      {
+        "name": "f3",
+        "required": true,
+        "type": "Type3",
+        "is_referrence": true
+      }
+    ]
+  },
+  {
+    "name": "Type1",
+    "items": [
+      {
+        "name": "a",
+        "required": true,
+        "type": "Number",
+        "is_referrence": false
+      }
+    ]
+  },
+  {
+    "name": "Type2",
+    "items": [
+      {
+        "name": "ttt",
+        "required": true,
+        "is_referrence": false
+      }
+    ]
+  },
+  {
+    "name": "Type3",
+    "items": [
+      {
+        "name": "t1",
+        "required": false,
+        "type": "Any",
+        "is_referrence": false
+      },
+      {
+        "name": "key",
+        "addtional": true,
+        "is_referrence": false
+      },
+      {
+        "name": "field2",
+        "required": true,
+        "is_referrence": false
+      }
+    ]
+  },
+  {
+    "name": "A",
+    "items": [
+      {
+        "name": "f1",
+        "required": true,
+        "default": "\"xxx\"",
+        "type": "String"
+      },
+      {
+        "name": "f2",
+        "required": true,
+        "type": "String"
+      },
+      {
+        "name": "f3",
+        "required": true,
+        "default": "2",
+        "type": "Number"
+      }
+    ]
+  },
+  {
+    "name": "EE",
+    "type": "enum",
+    "items": [
+      "aa",
+      "bb"
+    ]
+  },
+  {
+    "name": "B",
+    "items": [
+      {
+        "name": "fb",
+        "required": true,
+        "default": "\"ccc\"",
+        "type": "String"
+      },
+      {
+        "name": "f3",
+        "required": true,
+        "default": "333",
+        "type": "Number"
+      },
+      {
+        "name": "f4",
+        "required": true,
+        "type": "Type5",
+        "is_referrence": true
+      },
+      {
+        "name": "f1",
+        "required": true,
+        "default": "\"xxx\"",
+        "type": "String"
+      },
+      {
+        "name": "f2",
+        "required": true,
+        "type": "String"
+      }
+    ]
+  },
+  {
+    "name": "Type4"
+  },
+  {
+    "name": "Type5"
+  },
+  {
+    "name": "a1",
+    "typeParameters": [
+      "T",
+      "T2"
+    ],
+    "type": "type",
+    "ref_type": {
+      "is_referrence": false
+    }
+  }
+]

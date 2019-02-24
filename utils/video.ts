@@ -1,15 +1,6 @@
-import * as request from 'request-promise-native'
-import * as cheerio from 'cheerio'
-import fs = require('fs-extra')
-import qs = require('querystring')
+import { CramlerEntity, getMatcher } from './crawler-base';
 
 const { getBanliUrl, sign } = /* { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } // */require('./banli_tool');
-
-const req = request.defaults({
-  headers: {
-    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
-  }
-})
 
 enum VideoType {
   MOVIE,
@@ -20,7 +11,7 @@ interface ListItem {
   title: string,
   cover: string,
   url: string,
-  type: VideoType,
+  type: string,
   desc: string,
   rate: number | undefined
   series?: {
@@ -29,42 +20,32 @@ interface ListItem {
   }[]
 }
 
-export interface IVideo {
-  origin: string
-  search(kw: string, page: number): Promise<{
-    items: ListItem[],
-    pages: number,
-    page: number
-  }>
-  getVideoInfo(url: string): Promise<{
+interface Info {
+  title: string;
+  type?: number;
+  type_name: string;
+  series: {
     title: string;
-    type: VideoType;
-    type_name: string;
-    series: {
-      title: string;
-      items: {
-        title: string
-        url: string[]
-      }[]
-    } | undefined;
-    publish_date?: string;
-    desc: string;
-    url?: string | null
-    rate?: number
-    nodirect?: boolean
-  }>
+    items: {
+      title: string
+      url: string[]
+    }[]
+  } | undefined;
+  publish_date?: string;
+  desc: string;
+  url?: string | null
+  rate?: number
+  nodirect?: boolean
+  cover?: string
 }
 
-export const tencent: IVideo = {
-  origin: 'https://v.qq.com',
-  async search(kw: string, page = 1) {
-    var html: string = await req.get(`${this.origin}/x/search/`, {
-      qs: {
-        q: kw,
-        cur: page
-      }
+// 腾讯视频
+class Tencent extends CramlerEntity<any, Info, ListItem, any> {
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var $ = await this.requestAndParse(`${this.origin}/x/search/`, {
+      q: kw,
+      cur: page
     })
-    var $ = cheerio.load(html)
     var $items = $('.result_item')
     var items: ListItem[] = $items.map(function (index, ele) {
       var $ele = $(ele)
@@ -105,13 +86,18 @@ export const tencent: IVideo = {
     var page_str = $('.search_container').attr('r-props')
     return {
       items,
-      pages: +getMatch(/pages: (\d+)/, page_str),
-      page: +getMatch(/cur: (\d+)/, page_str)
+      pages: +getFirstMatch(/pages: (\d+)/, page_str),
+      page: +getFirstMatch(/cur: (\d+)/, page_str)
     }
-  },
-
-  async getVideoInfo(url: string) {
-    var html: string = await req.get(url)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(url: string): Promise<Info> {
+    var html: string = await this.request(url)
     var str = (<string[]>/(var LIST_INFO = [\s\S]*?)<\/script>/.exec(html))[1]
     // str = str.replace(/\bvar /g, '__data.')
     var { LIST_INFO, COVER_INFO, VIDEO_INFO } = getJsData(str + '; return {LIST_INFO, COVER_INFO, VIDEO_INFO}')
@@ -223,27 +209,26 @@ export const tencent: IVideo = {
     var data = JSON.parse(vinfo)
     console.log(data) */
   }
+  constructor() {
+    super('tencent', 'https://v.qq.com', '腾讯视频')
+  }
 }
 
-/* var video = new TencentVideo()
-video.search('西部世界').then(console.log)
-video.getVideoInfo('https://v.qq.com/x/cover/1egcxh1l6d8jyt1/i0026tithen.html').then(console.log) */
-
-export const youku: IVideo = {
-  origin: 'https://so.youku.com',
-  async search(kw: string, page = 1) {
-    var html: string = await req.get(`${this.origin}/search_video/q_${encodeURI(kw)}`, {
+// 优酷
+class Youku extends CramlerEntity<any, Info, ListItem, any> {
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var html: string = await this.request(`${this.origin}/search_video/q_${encodeURI(kw)}`, {
       qs: {
         pg: page,
         aaid: '194eb56f05e260ad3e1eec35e8d43ece'
       }
     })
-    var str = getMatch(
+    var str = getFirstMatch(
       /<script type="text\/javascript">bigview\.view\((.*?)\)<\/script/,
       html
     )
     html = JSON.parse(str).html
-    var $ = cheerio.load(html)
+    var $ = this.parse(html)
     var items: ListItem[] = $('.sk-mod:not(.sk-about-search)').map((i, ele) => {
       var $ele = $(ele)
       var cover = $ele.find('img').attr('src')
@@ -251,7 +236,7 @@ export const youku: IVideo = {
       var $header = $main.find('.mod-header')
       var $link = $header.find('a')
       var title = $link.text()
-      var url = normalizeUrl($link.attr('href'))
+      var url = this.normalUrl($link.attr('href'))
       var type = $header.find('.base-type').text()
       var ele_desc = $main.find('.mod-info .row-ellipsis span')[0]
       var desc = ele_desc && ele_desc.lastChild.nodeValue
@@ -283,22 +268,27 @@ export const youku: IVideo = {
       page: +$pages.filter('.current').text(),
       items
     }
-  },
-  async getVideoInfo(url: string): Promise<any> {
-    var html: string = await req.get(url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(url: string): Promise<Info> {
+    var $ = await this.requestAndParse(url)
     var title = $('h1').text().trim()
     var desc = $('meta[name="description"]').attr('content')
     var $links = $('.drama-content .item a')
     var publish_date = $('meta[itemprop="datePublished"]').attr('content')
     var rate = +$('.score').text()
-    var type = $('meta[property="og:type"]').attr('content')
+    var type = Number($('meta[property="og:type"]').attr('content'))
     var type_name = $('meta[name="irCategory"]').attr('content')
     var series
     if ($links.length > 0) {
       let items = $links.map((i, ele) => {
         var $ele = $(ele)
-        let url = normalizeUrl($ele.attr('href'))
+        let url = this.normalUrl($ele.attr('href'))
         return {
           title: $ele.find('.sn_num').text(),
           url
@@ -319,14 +309,34 @@ export const youku: IVideo = {
       rate
     }
   }
-
+  constructor() {
+    super('youku', 'https://so.youku.com', '优酷视频')
+  }
 }
 
-const iqiyi: IVideo = {
-  origin: 'https://so.iqiyi.com',
-  async search(kw, page) {
-    var html: string = await req.get(`${this.origin}/so/q_${encodeURI(kw)}_ctg__t_0_page_${page}_p_1_qc_0_rd__site__m_1_bitrate_`)
-    var $ = cheerio.load(html)
+// 哔哩哔哩
+class Bilibili extends CramlerEntity<any, Info, ListItem, any> {
+  search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    throw new Error("Method not implemented.");
+  }
+  getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  getInfo(url: string): Promise<Info> {
+    throw new Error("Method not implemented.");
+  }
+  constructor() {
+    super('bilibili', 'https://www.bilibili.com', '哔哩哔哩')
+  }
+}
+
+// 爱奇艺
+class Iqiyi extends CramlerEntity<any, Info, ListItem, any> {
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var $ = await this.requestAndParse(`https://so.iqiyi.com/so/q_${encodeURI(kw)}_ctg__t_0_page_${page}_p_1_qc_0_rd__site__m_1_bitrate_`)
     var items = $('.mod_result_list').children().map(function (i, ele) {
       var $ele = $(ele)
       var title = $ele.attr('data-widget-searchlist-tvname')
@@ -364,10 +374,15 @@ const iqiyi: IVideo = {
       pages,
       items
     }
-  },
-  async getVideoInfo(url) {
-    var html: string = await req.get(url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(url: string): Promise<Info> {
+    var $ = await this.requestAndParse(url)
     var title = $('.title-txt').text()
     var rate = +$('.score-new').text()
     var desc = $('.content-paragraph').text()
@@ -403,17 +418,17 @@ const iqiyi: IVideo = {
       rate
     }
   }
+  constructor() {
+    super('iqiyi', 'https://www.iqiyi.com', '爱奇艺')
+  }
 }
 
-const tudou: IVideo = {
-  origin: 'https://video.tudou.com',
-  async search(kw, page) {
-    var html: string = await req.get(`https://www.soku.com/nt/search/q_${encodeURI(kw)}`, {
-      qs: {
-        page
-      }
+// 土豆
+class Tudou extends CramlerEntity<any, Info, ListItem, any> {
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var $ = await this.requestAndParse(`https://www.soku.com/nt/search/q_${encodeURI(kw)}`, {
+      page
     })
-    var $ = cheerio.load(html)
     var items = $('.DIR .s_dir').children().not('.s_variety').map(function (i, ele) {
       var $ele = $(ele)
       var $detail = $ele.find('.s_detail')
@@ -466,9 +481,15 @@ const tudou: IVideo = {
       pages,
       items
     }
-  },
-  async getVideoInfo(url) {
-    var html: string = await req.get(url)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(url: string): Promise<Info> {
+    var html: string = await this.request.get(url)
     var data_str = (<RegExpMatchArray>html.match(/__INITIAL_STATE__=(.*?);<\/script>/))[1]
     var data = JSON.parse(data_str)
     var info = data.videoDesc.detail
@@ -505,24 +526,24 @@ const tudou: IVideo = {
       rate
     }
   }
+  constructor() {
+    super('tudou', 'https://video.tudou.com', '土豆')
+  }
 }
 
-const mgtv: IVideo = {
-  origin: 'https://www.mgtv.com',
-  async search(kw: string, page = 1) {
-    var html: string = await req.get(`https://so.mgtv.com/so/k-${encodeURI(kw)}`, {
-      qs: {
-        page
-      }
+// 芒果TV
+class Mgtv extends CramlerEntity<any, Info, ListItem, any> {
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var $ = await this.requestAndParse(`https://so.mgtv.com/so/k-${encodeURI(kw)}`, {
+      page
     })
-    var $ = cheerio.load(html)
     var items: ListItem[] = $('.result-content').map((i, ele) => {
       var $ele = $(ele)
       var $link = $ele.find('a').first()
       var $img = $link.find('img')
       var cover = $img.attr('src')
       var title = $img.attr('alt')
-      var url = normalizeUrl($link.attr('href'))
+      var url = this.normalUrl($link.attr('href'))
       var $detail = $ele.find('.vari_intro')
       var type = $detail.find('.info_it_cate .cont').text().trim()
       var desc = $detail.find('.desc_text').text().trim()
@@ -530,11 +551,11 @@ const mgtv: IVideo = {
       var $list = $detail.find('.so-result-alist .report-click')
       var series: any
       if ($list.length > 0) {
-        series = $list.map(function (_, ele) {
+        series = $list.map((_, ele) => {
           var $ele = $(ele)
           return {
             name: $ele.text().trim(),
-            url: normalizeUrl($ele.attr('href'))
+            url: this.normalUrl($ele.attr('href'))
           }
         }).get()
         url = series[0].url
@@ -555,10 +576,15 @@ const mgtv: IVideo = {
       page,
       items
     }
-  },
-  async getVideoInfo(url: string): Promise<any> {
-    var html: string = await req.get(url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(url: string): Promise<Info> {
+    var $ = await this.requestAndParse(url)
     var title = $('h1').text().trim()
     var desc = $('.u-meta-intro .details').text().trim()
     var publish_date
@@ -569,7 +595,7 @@ const mgtv: IVideo = {
     if (true) {
       let fname = `jQuery18208230071311003675_1550481373888`
       let video_id = (<RegExpMatchArray>url.match(/\w+(?=\.html)/))[0]
-      html = await req.get(`https://pcweb.api.mgtv.com/variety/showlist?video_id=${video_id}&cxid=&version=5.5.35&callback=${fname}&_support=10000000&_=${Date.now()}`)
+      let html = await this.request.get(`https://pcweb.api.mgtv.com/variety/showlist?video_id=${video_id}&cxid=&version=5.5.35&callback=${fname}&_support=10000000&_=${Date.now()}`)
       let str = (<RegExpMatchArray>html.match(/\((.*)\)/))[1]
       let data = JSON.parse(str)
       if (data.code === 200) {
@@ -596,20 +622,21 @@ const mgtv: IVideo = {
       rate
     }
   }
-
+  constructor() {
+    super('mgtv', 'https://www.mgtv.com', '芒果TV')
+  }
 }
 
-const imeiju: IVideo = {
-  origin: 'https://www.imeiju.cc',
-  async search(kw, page) {
-    var html: string = await req.get(this.origin + '/search.php', {
-      qs: {
-        page,
-        searchword: kw,
-        searchtype: ''
-      }
+// 爱美剧
+class Imeiju extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var $ = await this.requestAndParse(this.origin + '/search.php', {
+      page,
+      searchword: kw,
+      searchtype: ''
     })
-    var $ = cheerio.load(html)
     var items = $('.hy-video-details').map((i, ele) => {
       var $ele = $(ele)
       var $link = $ele.find('h3 a')
@@ -647,10 +674,16 @@ const imeiju: IVideo = {
       pages,
       items
     }
-  },
-  async getVideoInfo(_url) {
-    var html: string = await req.get(_url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(_url: string): Promise<Info> {
+    var html: string = await this.request(_url)
+    var $ = this.parse(html)
     var $title = $('.footer>a')
     var title = $title.text() + $title[0].nextSibling.nodeValue.trim()
     var type
@@ -686,18 +719,21 @@ const imeiju: IVideo = {
       series
     }
   }
+  constructor() {
+    super('imeiju', 'https://www.imeiju.cc', '爱美剧')
+  }
 }
 
 // 板栗电影网
-const siguady: IVideo = {
-  origin: 'http://www.siguady.com',
-  async search(kw, page) {
-    var html: string = await req.get(`http://www.siguady.com/index.php?s=search-index-wd-${encodeURIComponent(kw)}-sid-1-p-${page}`, {
+class Siguady extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var html: string = await this.request.get(`http://www.siguady.com/index.php?s=search-index-wd-${encodeURIComponent(kw)}-sid-1-p-${page}`, {
       headers: {
         'X-Requested-With': 'XMLHttpRequest'
       }
     })
-    var $ = cheerio.load(html)
+    var $ = this.parse(html)
     var items = $('.details-info-min').map((i, ele) => {
       var $ele = $(ele)
       var $a = $ele.find('a.video-pic')
@@ -737,10 +773,15 @@ const siguady: IVideo = {
       pages,
       items
     }
-  },
-  async getVideoInfo(_url) {
-    var html: string = await req.get(_url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(_url: string): Promise<Info> {
+    var $ = await this.requestAndParse(_url)
     var title = $('h1').text().replace('在线观看', '')
     var data = getJsData((<string>$('#cms_play script').html()).replace('var ', 'return '))
     var m_type = data.type
@@ -771,9 +812,9 @@ const siguady: IVideo = {
       nodirect = true
       url = data.url
     } else {
-      var burl = getBanliUrl(data)
+      let burl = getBanliUrl(data)
       if (burl) {
-        html = await req.get(burl, {
+        let html = await this.request.get(burl, {
           headers: {
             Referer: 'http://api.siguady.com'
           }
@@ -789,7 +830,7 @@ const siguady: IVideo = {
           if (m_type === 'zzz') {
             m_type = 'weiyun'
           }
-          let ret = await req.post('http://api.siguady.com/mdparse/url.php', {
+          let ret = await this.request.post('http://api.siguady.com/mdparse/url.php', {
             form: {
               id: data.url,
               type: m_type,
@@ -817,18 +858,21 @@ const siguady: IVideo = {
       nodirect
     }
   }
+  constructor() {
+    super('siguady', 'http://www.siguady.com', '板栗电影网')
+  }
 }
 
 // 青苹果影院
-const qpgyy: IVideo = {
-  origin: 'http://www.qpgyy.com',
-  async search(kw, page) {
-    var html: string = await req.post(`${this.origin}/so/`, {
+class Qpgyy extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var html: string = await this.request.post(`${this.origin}/so/`, {
       form: {
         wd: kw
       }
     })
-    var $ = cheerio.load(html)
+    var $ = this.parse(html)
     var items = $('.itemList').map((i, ele) => {
       var $ele = $(ele)
       var $a = $ele.find('a').eq(1)
@@ -862,10 +906,15 @@ const qpgyy: IVideo = {
       pages: items.length > 0 ? 1 : 0,
       items
     }
-  },
-  async getVideoInfo(_url) {
-    var html: string = await req.get(_url)
-    var $ = cheerio.load(html)
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(_url: string): Promise<Info> {
+    var $ = await this.requestAndParse(_url)
     var rate = +$('.p10idt-gold').text()
     var $breakcrumbs = $('.bread-crumbs a')
     var title = $breakcrumbs.filter('.current').text().replace('在线观看', '')
@@ -903,17 +952,9 @@ const qpgyy: IVideo = {
       url
     }
   }
-}
-
-var mappings: Record<string, IVideo> = {
-  tencent,
-  youku,
-  iqiyi,
-  siguady,
-  qpgyy,
-  imeiju,
-  tudou,
-  mgtv
+  constructor() {
+    super('qpgyy', 'http://www.qpgyy.com', '青苹果影院')
+  }
 }
 
 // var video = new YoukuVideo()
@@ -921,24 +962,21 @@ var mappings: Record<string, IVideo> = {
 // video.search('西部世界').then(console.log)
 // video.getVideoInfo('https://v.youku.com/v_show/id_XMTQ3OTY0MzIwMA==.html?spm=a2h0j.11185381.listitem_page2.5~A').then(console.log)
 
-export function getVideor(type: string) {
-  var item = mappings[type]
-  if (item) {
-    return item
-  }
-  throw new Error('暂无功能')
-}
+export default getMatcher(
+  [
+    new Tencent(),
+    new Youku(),
+    new Bilibili(),
+    new Iqiyi(),
+    new Tudou(),
+    new Mgtv(),
+    new Imeiju(),
+    new Siguady(),
+    new Qpgyy()
+  ]
+)
 
-export function getVideorFromUrl(url: string) {
-  var _url = url.replace(/https?:\/\//, '')
-  var item = videoSites.find(item => _url.startsWith(item.value))
-  if (item) {
-    return mappings[item.id]
-  }
-  throw new Error('暂无功能')
-}
-
-export const videoSites: {
+const videoSites: {
   id: string
   text: string
   value: string
@@ -1271,17 +1309,6 @@ function getJsData(text: string) {
   return new Function(text)()
 }
 
-function getMatch(reg: RegExp, str: string) {
+function getFirstMatch(reg: RegExp, str: string) {
   return (<string[]>reg.exec(str))[1]
-}
-
-export function normalizeUrl(url: string, protocal = 'https') {
-  if (url.startsWith('//')) {
-    return `${protocal}:${url}`
-  }
-  return url
-}
-
-function writeFile(content: string, filename: string) {
-  fs.writeFile(filename, content, () => { })
 }
