@@ -44,6 +44,8 @@ export function parse(code: string) {
   var sourceFile = ts.createSourceFile(
     'a.ts', code, ts.ScriptTarget.Latest, true)
 
+  var __id = 1
+
   var arr: (TypeItem | EnumItem | ClassItem)[] = []
   ts.forEachChild(sourceFile, node => {
     if (ts.isInterfaceDeclaration(node)) {
@@ -163,11 +165,9 @@ export function parse(code: string) {
       }, type)
     }
   }
-
-  var __id = 1
   function getTypeLiteral(node: ts.TypeLiteralNode) {
     var obj: any = {
-      name: `Type${++__id}`,
+      name: `Type${__id++}`,
       type: 'interface'
     }
     arr.push(obj)
@@ -253,9 +253,13 @@ export function toGql(code: string) {
       let str = item.items.map(item => {
         var s = ''
         if (item.type === 'Array') {
-          s = `[${item.items.type}]`
+          let type = item.items.type
+          if (type === 'Any') {
+            type = 'JSON'
+          }
+          s = `[${type}]`
         } else if (item.type === 'Any') {
-          s = 'String'
+          s = 'JSON'
         } else {
           s = item.type
         }
@@ -286,34 +290,44 @@ export function toJsonSchema(code: string) {
       let properties: any = {}
       let required: string[] = []
       item.items.forEach(item => {
-        let type
+        let type = item.type
         let items
-        if (item.type === 'Any') {
-          type = 'String'
-        } else {
-          type = item.type
+        let $ref
+        let format
+        if (type === 'Any') {
+          type = 'object'
+        } else if (type === 'Date') {
+          type = 'string'
+          format = 'date'
         }
         if (type === 'Array' && item.items) {
           let type = item.items.type
           let $ref
           if (item.items.is_referrence) {
-            type = undefined
-            $ref = '#/models/' + type
+            if (type) {
+              $ref = '#/models/' + type
+              type = undefined
+            }
           }
           items = {
-            type,
+            type: type && type.toLowerCase(),
             $ref
           }
         }
         if (item.required) {
           required.push(item.name)
         }
+        if (item.is_referrence) {
+          type = undefined
+          $ref = '#/models/' + item.type
+        }
         properties[item.name] = {
           title: item.title,
           default: item.default,
           type: type && type.toLowerCase(),
           items,
-          $ref: item.is_referrence ? '#/models/' + item.type : undefined
+          $ref,
+          format
         }
       })
       models[item.name] = {
