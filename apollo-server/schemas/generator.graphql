@@ -1,0 +1,4 @@
+type Query {
+  ts2Code(code: String!, type: String!): String
+  vue2Code(code: String!, type: String!): String
+}
