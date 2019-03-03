@@ -41,6 +41,8 @@
     "lowdb": "^1.0.0",
     "node-pty-prebuilt": "^0.7.6",
     "ntypescript": "^1.201706190042.1",
+    "ody-html-tree": "^1.0.2",
+    "ody-transpiler": "^1.0.6",
     "ramda": "^0.25.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.5",

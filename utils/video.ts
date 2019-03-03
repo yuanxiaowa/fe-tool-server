@@ -383,13 +383,16 @@ class Iqiyi extends CramlerEntity<any, Info, ListItem, any> {
   }
   async getInfo(url: string): Promise<Info> {
     var $ = await this.requestAndParse(url)
-    var title = $('.title-txt').text()
-    var rate = +$('.score-new').text()
-    var desc = $('.content-paragraph').text()
-    var cover = 'https:' + $('.intro-img').attr('src')
+    var $ele = $('#iqiyi-main div[is=i71-play],#playFeed')
+    var page_info = JSON.parse($ele.attr(':page-info'))
+    var info = JSON.parse($ele.attr(':video-info'))
+    var title = info.name
+    var rate = info.score
+    var desc = info.description
+    var cover = info.imageUrl
     var series
     var type
-    var type_name
+    var type_name = page_info.categoryName
     var $links = $('[is=i71-playpage-sdrama-list]')
     if ($links.length > 0) {
       let items = JSON.parse($links.attr(':initialized-data')).map((item: any) => {
@@ -403,10 +406,8 @@ class Iqiyi extends CramlerEntity<any, Info, ListItem, any> {
         items
       }
       type = 2
-      type_name = '电视剧'
     } else {
       type = 1
-      type_name = '电影'
     }
     return {
       title,
