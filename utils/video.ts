@@ -958,6 +958,63 @@ class Qpgyy extends CramlerEntity<any, Info, ListItem, any> {
   }
 }
 
+// 爱课程
+class Icourses extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    var html: string = await this.request.post(`${this.origin}/web//sword/portal/shareSearchPage`, {
+      form: {
+        kw,
+        eduLevel: '',
+        priSubjectLevel: '',
+        subSubjectLevel: '',
+        thirdSubjectLevel: '',
+        provinceId: '',
+        curPage: page,
+        pageSize: 20,
+        listType: 1
+      }
+    })
+    var $ = this.parse(html)
+    var pages = +$('.larPagination-i').not('.fy-input,.fy-go').last().prev().prev().text()
+    var items = $('.icourse-item-modulebox').map((i, ele) => {
+      var $ele = $(ele)
+      var $a = $ele.find('.icourse-desc-title')
+      var title = $a.text()
+      var url = $a.attr('href')
+      var cover = $ele.find('img').attr('src')
+      var $d = $('.icourse-desc-school')
+      var desc = $d.last().text().trim()
+      var type = $d.first().text().trim()
+      return {
+        title,
+        url,
+        cover,
+        desc,
+        type
+      }
+    }).get()
+    return {
+      page,
+      pages,
+      items
+    }
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  // @ts-ignore
+  getInfo(_url: string) {
+    throw new Error('暂未实现')
+  }
+  constructor() {
+    super('icourses', 'http://www.icourses.cn', '爱课程')
+  }
+}
+
 // var video = new YoukuVideo()
 
 // video.search('西部世界').then(console.log)
@@ -973,7 +1030,8 @@ export default getMatcher(
     new Mgtv(),
     new Imeiju(),
     new Siguady(),
-    new Qpgyy()
+    new Qpgyy(),
+    new Icourses()
   ]
 )
 
