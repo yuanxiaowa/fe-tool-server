@@ -689,9 +689,9 @@ class Imeiju extends CramlerEntity<any, Info, ListItem, any> {
     var type
     var type_name = ''
     var $links = $('#playlist1 a')
-    var list_str = (<RegExpMatchArray>html.match(/var VideoInfoList="(.*?)"/))[1]
-    var list_urls = list_str.split('$$$')[0].split('$$')[1].split('#')
-    var index = +(<RegExpMatchArray>_url.match(/\d+(?=\.html)/))[0]
+    var list_str = html.match(/var VideoInfoList="(.*?)"/)![1]
+    var list_urls = list_str.split('$$$').find(item => item.startsWith('百度云'))!.split('$$')[1].split('#')
+    var index = +_url.match(/\d+(?=\.html)/)![0]
     var url = list_urls.map(url => url.split('$')[1])[index]
     var series
     if ($links.length > 1) {
