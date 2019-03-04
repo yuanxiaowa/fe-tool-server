@@ -217,7 +217,7 @@ class Tencent extends CramlerEntity<any, Info, ListItem, any> {
 // 优酷
 class Youku extends CramlerEntity<any, Info, ListItem, any> {
   async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
-    var html: string = await this.request(`${this.origin}/search_video/q_${encodeURI(kw)}`, {
+    var html: string = await this.request(`https://so.youku.com/search_video/q_${encodeURI(kw)}`, {
       qs: {
         pg: page,
         aaid: '194eb56f05e260ad3e1eec35e8d43ece'
@@ -290,7 +290,7 @@ class Youku extends CramlerEntity<any, Info, ListItem, any> {
         var $ele = $(ele)
         let url = this.normalUrl($ele.attr('href'))
         return {
-          title: $ele.find('.sn_num').text(),
+          title: $ele.find('.title').text(),
           url
         }
       }).get()
@@ -310,7 +310,7 @@ class Youku extends CramlerEntity<any, Info, ListItem, any> {
     }
   }
   constructor() {
-    super('youku', 'https://so.youku.com', '优酷视频')
+    super('youku', 'https://v.youku.com', '优酷视频')
   }
 }
 
@@ -1006,9 +1006,8 @@ class Icourses extends CramlerEntity<any, Info, ListItem, any> {
   async getRecomms(): Promise<any[]> {
     throw new Error("Method not implemented.");
   }
-  // @ts-ignore
-  getInfo(_url: string) {
-    throw new Error('暂未实现')
+  async getInfo(_url: string): Promise<Info>  {
+    throw new Error("Method not implemented.");
   }
   constructor() {
     super('icourses', 'http://www.icourses.cn', '爱课程')
