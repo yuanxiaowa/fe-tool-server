@@ -1006,11 +1006,31 @@ class Icourses extends CramlerEntity<any, Info, ListItem, any> {
   async getRecomms(): Promise<any[]> {
     throw new Error("Method not implemented.");
   }
-  async getInfo(_url: string): Promise<Info>  {
+  async getInfo(_url: string): Promise<Info> {
     throw new Error("Method not implemented.");
   }
   constructor() {
     super('icourses', 'http://www.icourses.cn', '爱课程')
+  }
+}
+
+// 网易公开课
+class Wangyigkk extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    throw new Error("Method not implemented.");
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(_url: string): Promise<Info> {
+    throw new Error("Method not implemented.");
+  }
+  constructor() {
+    super('Wangyigkk', 'https://open.163.com', '网易公开课')
   }
 }
 
