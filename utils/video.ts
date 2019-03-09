@@ -1015,7 +1015,7 @@ class Icourses extends CramlerEntity<any, Info, ListItem, any> {
 }
 
 // 网易公开课
-class Wangyigkk extends CramlerEntity<any, Info, ListItem, any> {
+class Open163 extends CramlerEntity<any, Info, ListItem, any> {
   indirect = true
   async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
     throw new Error("Method not implemented.");
@@ -1030,7 +1030,7 @@ class Wangyigkk extends CramlerEntity<any, Info, ListItem, any> {
     throw new Error("Method not implemented.");
   }
   constructor() {
-    super('Wangyigkk', 'https://open.163.com', '网易公开课')
+    super('open163', 'https://open.163.com', '网易公开课')
   }
 }
 
@@ -1050,6 +1050,7 @@ export default getMatcher(
     new Imeiju(),
     new Siguady(),
     new Qpgyy(),
+    new Open163(),
     new Icourses()
   ]
 )
