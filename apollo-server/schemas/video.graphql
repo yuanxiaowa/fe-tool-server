@@ -13,6 +13,7 @@ type VideoInfo {
   rate: Float
   series: JSON
   nodirect: Boolean
+  independent: Boolean
 }
 
 type VideoSite {

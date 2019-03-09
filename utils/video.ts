@@ -1,5 +1,6 @@
 import { CramlerEntity, getMatcher } from './crawler-base';
 import iconv = require('iconv-lite');
+import { writeFile } from 'fs-extra';
 
 const { getBanliUrl, sign } = /* { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } // */require('./banli_tool');
 
@@ -38,6 +39,7 @@ interface Info {
   rate?: number
   nodirect?: boolean
   cover?: string
+  independent?: boolean
 }
 
 // 腾讯视频
@@ -1114,6 +1116,93 @@ class Open163 extends CramlerEntity<any, Info, ListItem, any> {
   }
 }
 
+// 第1教程网
+class C1kejian extends CramlerEntity<any, Info, ListItem, any> {
+  indirect = true
+  async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
+    kw = kw.replace(/[^\x00-\xff]/g, _ => `%${iconv.encode(_, 'gb2312').toString('hex').replace(/^\w{2}/, '$&%')}`)
+    var buffer = await this.request.get(`${this.origin}/search.php?searchword=${kw}&page=${page}`, {
+      encoding: null
+    })
+    var html = iconv.decode(buffer, 'gb2312')
+    var $ = await this.parse(html)
+    var m_pages = $('#fenye span').text().match(/\/(\d+)/)
+    var pages = Number(m_pages && m_pages[1]) || 0
+    var items = $('.channel_list ul').first().children().map((_, ele) => {
+      var $ele = $(ele)
+      var $a = $ele.find('a.v_txt')
+      var title = $a.text()
+      var url = this.origin + $a.attr('href')
+      var cover = $ele.find('img').attr('data-original')
+      return {
+        title,
+        url,
+        cover
+      }
+    }).get()
+    return {
+      page,
+      pages,
+      items
+    }
+  }
+  async getDepInfo(url: string): Promise<any> {
+    throw new Error("Method not implemented.");
+  }
+  async getRecomms(): Promise<any[]> {
+    throw new Error("Method not implemented.");
+  }
+  async getInfo(_url: string): Promise<Info> {
+    var buffer = await this.request.get(_url, {
+      encoding: null
+    })
+    var html = iconv.decode(buffer, 'gb2312')
+    let $ = this.parse(html)
+    let m = _url.match(/\/(\d+)\/|\?(.*)\.html/)!
+    let id: string
+    if (m[1]) {
+      id = m[1] + '-0-0'
+    } else {
+      id = m[2]
+    }
+    let url = `http://m.video.1kejian.com/player/gethtml5player.php?id=${id}`
+    let $as = $('.video_title_main a').last()
+    let title = $as[0].previousSibling.nodeValue.trim()
+    let desc = $('.intro_item p').eq(1).text().trim()
+    let cover = this.normalUrl($('.user_cover_img').attr('src'))
+    let type
+    let type_name = ''
+    let series
+    let $list = $('#playlist a')
+    if ($list.length > 0) {
+      let items = $list.map((_, ele) => {
+        var $ele = $(ele)
+        return {
+          title: $ele.text(),
+          url: this.normalUrl($ele.attr('href'))
+        }
+      }).get()
+      series = {
+        title: $as.text().trim(),
+        items
+      }
+    }
+    return {
+      url,
+      title,
+      cover,
+      desc,
+      type,
+      type_name,
+      series,
+      independent: true
+    }
+  }
+  constructor() {
+    super('1kejian', 'http://video.1kejian.com', '第1教程网')
+  }
+}
+
 // var video = new YoukuVideo()
 
 // video.search('西部世界').then(console.log)
@@ -1131,7 +1220,8 @@ export default getMatcher(
     new Siguady(),
     new Qpgyy(),
     new Open163(),
-    new Icourses()
+    new Icourses(),
+    new C1kejian()
   ]
 )
 

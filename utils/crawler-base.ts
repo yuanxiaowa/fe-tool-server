@@ -4,7 +4,8 @@ import * as cheerio from 'cheerio'
 export const req = request.defaults({
   headers: {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36'
-  }
+  },
+  timeout: 5000
 })
 
 export abstract class CramlerEntity<DepItem, Info, SearchItem, Recomms> {
