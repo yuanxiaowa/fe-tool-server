@@ -1065,7 +1065,7 @@ class Open163 extends CramlerEntity<any, Info, ListItem, any> {
     throw new Error("Method not implemented.");
   }
   async getInfo(_url: string): Promise<Info> {
-    if (_url.includes('//open.163.com/special/opencourse')) {
+    if (_url.includes('//open.163.com/special/')) {
       let $ = await this.requestAndParse(_url)
       _url = $('#list1 a').attr('href')
     }
