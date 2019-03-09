@@ -1,4 +1,5 @@
 import { CramlerEntity, getMatcher } from './crawler-base';
+import iconv = require('iconv-lite');
 
 const { getBanliUrl, sign } = /* { getBanliUrl(data: any) { return '' }, sign(data: any) { return '' } } // */require('./banli_tool');
 
@@ -1018,7 +1019,44 @@ class Icourses extends CramlerEntity<any, Info, ListItem, any> {
 class Open163 extends CramlerEntity<any, Info, ListItem, any> {
   indirect = true
   async search(kw: string, page: number): Promise<{ page: number; pages: number; items: ListItem[]; }> {
-    throw new Error("Method not implemented.");
+    var data = await this.request.post('https://c.open.163.com/dwr/call/plaincall/OpenSearchBean.searchCourse.dwr', {
+      body: [
+        'callCount=1',
+        'scriptSessionId=${scriptSessionId}190',
+        'c0-scriptName=OpenSearchBean',
+        'c0-methodName=searchCourse',
+        'c0-id=0',
+        `c0-param0=string:${encodeURIComponent(kw)}`,
+        `c0-param1=number:${page}`,
+        'c0-param2=number:20',
+        'batchId=1552097565',
+      ].join('\n')
+    })
+    var pages: any
+    var items!: any[]
+    new Function('dwr', data)({
+      engine: {
+        _remoteHandleCallback(_1: any, _2: any, {
+          baseQuery,
+          dtos
+        }: any) {
+          pages = baseQuery.totlePageCount
+          items = dtos.map((item: any) => ({
+            title: item.title.replace(/{#+(.*?)#+}/g, '$1'),
+            cover: item.picUrl,
+            desc: item.description.replace(/{#+(.*?)#+}/g, '$1'),
+            type: item.category,
+            url: item.courseUrl,
+            need_resolve: true
+          }))
+        }
+      }
+    })
+    return {
+      page,
+      pages,
+      items
+    }
   }
   async getDepInfo(url: string): Promise<any> {
     throw new Error("Method not implemented.");
@@ -1027,7 +1065,49 @@ class Open163 extends CramlerEntity<any, Info, ListItem, any> {
     throw new Error("Method not implemented.");
   }
   async getInfo(_url: string): Promise<Info> {
-    throw new Error("Method not implemented.");
+    if (_url.includes('//open.163.com/special/opencourse')) {
+      let $ = await this.requestAndParse(_url)
+      _url = $('#list1 a').attr('href')
+    }
+    var buffer = await this.request.get(_url, {
+      encoding: null
+    })
+    var html = iconv.decode(buffer, 'gb2312')
+    let $ = this.parse(html)
+    let url = $('script').last().prev().html()!.match(/appsrc\s*:\s*'(.*?)'/)![1]
+    let title = $('.sname').text()
+    let desc = $('#j-movieintro-box .j-introtxt').text().trim()
+    let cover
+    let type
+    let type_name = $('.u-ptl-c>p').eq(4).children().first()[0].nextSibling.nodeValue
+    let series
+    let $list = $('#j-playlist-container .item')
+    if ($list.length > 0) {
+      let items = $list.map((_, ele) => {
+        var $ele = $(ele)
+        let url = $ele.find('a').attr('href')
+        if (!url) {
+          cover = $ele.find('img').attr('src')
+        }
+        return {
+          title: $ele.find('.f-thide').text().trim(),
+          url: url || _url
+        }
+      }).get()
+      series = {
+        title: $('.u-ptl-c h3').text(),
+        items
+      }
+    }
+    return {
+      url,
+      title,
+      cover,
+      desc,
+      type,
+      type_name,
+      series
+    }
   }
   constructor() {
     super('open163', 'https://open.163.com', '网易公开课')
