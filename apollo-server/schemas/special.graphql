@@ -12,7 +12,7 @@ input SpecialInput {
 
 type SepcialItem {
   id: ID!
-  name: String!
+  name: String
 }
 
 type SpecialDetail {
