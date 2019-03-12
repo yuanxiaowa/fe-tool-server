@@ -17,9 +17,9 @@ type SepcialItem {
 
 type SpecialDetail {
   id: ID!
-  name: String!
-  template: String!
-  schema: String!
+  name: String
+  template: String
+  schema: String
   data: JSON
   layout: String
   url: String
